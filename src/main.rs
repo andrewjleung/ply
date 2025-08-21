@@ -32,6 +32,9 @@ use clap::{Args, Parser, Subcommand};
 * - ply stats [CYCLE] -> give stats on the current or given cycle
 */
 
+mod application;
+mod scraper;
+
 struct PlyConfig {
     data_dir: PathBuf,
     days_to_ghost: u16,
