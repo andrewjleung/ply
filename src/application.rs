@@ -1,13 +1,16 @@
-use std::fs::File;
-
 use anyhow::{Context, Result};
 use bon::Builder;
 use camino::{Utf8Path as Path, Utf8PathBuf as PathBuf};
 use chrono::{DateTime, Utc};
-use url::Url;
+use serde::{Deserialize, Serialize};
+use std::{
+    fs::{self, File},
+    io::Write,
+};
 
-use crate::scraper;
+use crate::{PlyConfig, scraper};
 
+#[derive(Serialize, Deserialize)]
 pub struct SalaryRange {
     lower: u32,
     range: u32,
@@ -21,7 +24,7 @@ impl SalaryRange {
 
 /// For now, an application will be uniquely identified by:
 /// (cycle, company, title, team, applied_at, listing_url)
-#[derive(Builder)]
+#[derive(Builder, Serialize, Deserialize)]
 pub struct Application {
     pub listing_url: Option<url::Url>,
 
@@ -41,6 +44,7 @@ pub struct Application {
     pub salary_range: Option<SalaryRange>,
 }
 
+#[derive(Serialize, Deserialize)]
 pub enum StageType {
     Application,
     Screen,
@@ -50,6 +54,7 @@ pub enum StageType {
     Rejected,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Stage {
     start_time: DateTime<Utc>,
     deadline: Option<DateTime<Utc>>,
@@ -58,8 +63,22 @@ pub struct Stage {
 }
 
 impl Application {
-    pub fn document(&self) -> Result<File> {
-        unimplemented!()
+    pub fn document(&self, config: &PlyConfig) -> Result<File> {
+        let path = Path::new(&config.data_dir).join(self.file_name());
+
+        if let Ok(exists) = fs::exists(&path)
+            && exists
+        {
+            Ok(File::open(path).context("failed to open existing document")?)
+        } else {
+            let mut f = File::create_new(path)?;
+            let frontmatter = toml::to_string(self).context("failed to serialize application")?;
+            let content = format!("---\n{frontmatter}\n---\n");
+
+            f.write_all(&content.into_bytes())
+                .context("failed to write application to file")?;
+            Ok(f)
+        }
     }
 
     pub fn snap(&self, destination: &Path) -> Result<File> {

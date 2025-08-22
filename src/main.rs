@@ -86,7 +86,7 @@ struct EditArgs {
 }
 
 mod ply {
-    use crate::{EditArgs, NoArgs, PlyConfig, ToArgs, YesArgs};
+    use crate::{EditArgs, NoArgs, PlyConfig, ToArgs, YesArgs, application::Application};
     use anyhow::{Error, Result};
 
     pub fn to(config: &PlyConfig, args: &ToArgs) -> Result<()> {
@@ -135,7 +135,7 @@ fn main() -> Result<()> {
 
     // TODO: take in data directory, within a ply.toml
     let config = PlyConfig {
-        data_dir: Path::new("../data").to_path_buf(),
+        data_dir: Path::new("data").to_path_buf(),
         days_to_ghost: 90,
     };
 
