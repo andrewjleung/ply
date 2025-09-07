@@ -33,6 +33,7 @@ use clap::{Args, Parser, Subcommand};
 */
 
 mod application;
+mod document;
 mod scraper;
 
 struct PlyConfig {
@@ -62,9 +63,6 @@ struct ToArgs {
 
     /// The company name of the job, this will be inferred from the URL if not present
     company: Option<String>,
-
-    /// If set, open the document for this new application in your configured EDITOR
-    editor: bool,
 }
 
 #[derive(Args)]
@@ -86,16 +84,22 @@ struct EditArgs {
 }
 
 mod ply {
-    use crate::{EditArgs, NoArgs, PlyConfig, ToArgs, YesArgs, application::Application};
-    use anyhow::{Error, Result};
+    use crate::{
+        EditArgs, NoArgs, PlyConfig, ToArgs, YesArgs,
+        application::{self, Application},
+    };
+    use anyhow::{Context, Error, Result};
 
     pub fn to(config: &PlyConfig, args: &ToArgs) -> Result<()> {
         // fetch the application
 
         // create a document
+        let app = application::new(&args.company.clone().unwrap(), "foo", "foo");
+        app.write_new_document(config)?;
 
         // open the document if requested
-        Err(Error::msg("unimplemented!"))
+        // Err(Error::msg("unimplemented!"))
+        Ok(())
     }
 
     pub fn yes(config: &PlyConfig, args: &YesArgs) -> Result<()> {
@@ -138,11 +142,6 @@ fn main() -> Result<()> {
         data_dir: Path::new("data").to_path_buf(),
         days_to_ghost: 90,
     };
-
-    DirBuilder::new().create(&config.data_dir).context(format!(
-        "failed to create data directory at {}",
-        config.data_dir
-    ))?;
 
     match args.command {
         Commands::To(args) => ply::to(&config, &args).context("failed to process `to` command"),
