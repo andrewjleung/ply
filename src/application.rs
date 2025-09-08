@@ -1,51 +1,28 @@
+use std::fs::File;
+
 use anyhow::{Context, Result};
 use bon::Builder;
-use camino::{Utf8Path as Path, Utf8PathBuf as PathBuf};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::{
-    fs::{self, File},
-    io::Write,
-};
 
 use crate::{
     PlyConfig,
     document::{Document, Filename},
-    scraper,
+    job::Job,
 };
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct SalaryRange {
-    lower: u32,
-    range: u32,
-}
-
-impl SalaryRange {
-    pub fn upper(&self) -> u32 {
-        self.lower + self.range
-    }
-}
 
 /// For now, an application will be uniquely identified by:
 /// (cycle, company, title, team, applied_at, listing_url)
 #[derive(Builder, Serialize, Deserialize, Clone)]
 pub struct Application {
-    pub listing_url: Option<url::Url>,
+    pub job: Job,
 
     #[builder(default = Utc::now())]
     pub applied_at: DateTime<Utc>,
 
     pub cycle: Option<String>,
 
-    pub company: String,
-
-    pub title: String,
-
-    pub team: String,
-
     pub stages: Vec<Stage>,
-
-    pub salary_range: Option<SalaryRange>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -66,13 +43,12 @@ pub struct Stage {
     stage_type: StageType,
 }
 
-pub fn new(company: &str, title: &str, team: &str) -> Application {
+pub fn new(job: Job) -> Application {
     let now = Utc::now();
+
     Application::builder()
         .applied_at(now)
-        .company(company.to_owned())
-        .title(title.to_owned())
-        .team(team.to_owned())
+        .job(job)
         .stages(vec![Stage {
             start_time: now,
             deadline: None,
@@ -86,9 +62,9 @@ impl Filename for Application {
     fn filename(&self) -> String {
         let elements: Vec<String> = vec![
             self.applied_at.format("%Y%m%d%H%M%S%3f").to_string(),
-            Self::normalize_filename_attribute(&self.company),
-            Self::normalize_filename_attribute(&self.title),
-            Self::normalize_filename_attribute(&self.team),
+            Self::normalize_filename_attribute(&self.job.company),
+            Self::normalize_filename_attribute(&self.job.title),
+            Self::normalize_filename_attribute(&self.job.team),
             String::from("md"),
         ];
 
@@ -105,10 +81,6 @@ impl Application {
 
         doc.write_new(&config.data_dir)
             .context("failed to write application")
-    }
-
-    pub fn snap(&self, destination: &Path) -> Result<File> {
-        unimplemented!()
     }
 
     fn normalize_filename_attribute(name: &str) -> String {

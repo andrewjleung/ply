@@ -34,7 +34,8 @@ use clap::{Args, Parser, Subcommand};
 
 mod application;
 mod document;
-mod scraper;
+mod job;
+mod scrape;
 
 struct PlyConfig {
     data_dir: PathBuf,
@@ -87,18 +88,31 @@ mod ply {
     use crate::{
         EditArgs, NoArgs, PlyConfig, ToArgs, YesArgs,
         application::{self, Application},
+        scrape::{
+            hiring_cafe::{HiringCafeScraper, TestHiringCafeScraper},
+            scrape,
+        },
     };
     use anyhow::{Context, Error, Result};
+    use url::Url;
 
     pub fn to(config: &PlyConfig, args: &ToArgs) -> Result<()> {
-        // fetch the application
+        // TODO: support prompts when no url/company supplied
+        let url = args
+            .url
+            .clone()
+            .ok_or_else(|| Error::msg("support for interactive prompts is unimplemented"))?;
 
-        // create a document
-        let app = application::new(&args.company.clone().unwrap(), "foo", "foo");
-        app.write_new_document(config)?;
+        let scraper = TestHiringCafeScraper {};
+        let job = scrape(
+            &scraper,
+            &Url::parse(&url).context("failed to parse given URL")?,
+        )
+        .context("failed to scrape given URL")?;
+
+        application::new(job).write_new_document(config)?;
 
         // open the document if requested
-        // Err(Error::msg("unimplemented!"))
         Ok(())
     }
 

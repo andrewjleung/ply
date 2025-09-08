@@ -13,3 +13,5 @@ camino = "1.1"
 chrono = { version = "0.4", features = ["serde"] }
 url = { version = "2.5", features = ["serde"] }
 bon = "3.7"
+scraper = "0.24.0"
+regex = "1.11.2"
