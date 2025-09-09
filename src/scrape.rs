@@ -2,7 +2,7 @@ use anyhow::{Context, Error, Result};
 use camino::Utf8Path as Path;
 use std::{
     fs::{DirBuilder, File},
-    io::{Read, copy},
+    io::{Read, Write, copy},
 };
 use url::Url;
 
@@ -29,12 +29,13 @@ pub fn scrape(job_scraper: &impl JobScraper, url: &Url, content_dir: Option<&Pat
         .read_to_end(&mut content_buffer)
         .context("failed to read job content into buffer")?;
 
-    let mut content_buffer = &content_buffer[..];
+    let content_buffer = &content_buffer[..];
 
     let job = job_scraper
         .parse(content_buffer)
         .context(format!("failed to parse job content at {}", url.as_str()))?;
 
+    // TODO: split this out so it's not a weird little side effect
     if let (Some(dir), Ok(filename)) = (content_dir, job.filename()) {
         if dir.is_file() {
             return Err(Error::msg(format!(
@@ -57,7 +58,31 @@ pub fn scrape(job_scraper: &impl JobScraper, url: &Url, content_dir: Option<&Pat
             filepath
         ))?;
 
-        copy(&mut content_buffer, &mut f).context("failed to write scraped content")?;
+        let markdown_content = htmd::HtmlToMarkdown::builder()
+            .skip_tags(vec!["script", "style"])
+            .build()
+            .convert(
+                &String::from_utf8(content_buffer.to_vec())
+                    .context("failed to read scraped content into string")?,
+            )
+            .context("failed to convert scraped HTML to markdown")?;
+
+        f.write(markdown_content.as_bytes())
+            .context("failed to write scraped markdown content")?;
+
+        println!("scraped listing written to {}", filepath)
+
+        // match markdown_content {
+        //     Ok(content) => {
+        //         f.write(content.as_bytes())
+        //             .context("failed to write scraped markdown content")?;
+        //     }
+        //     Err(_) => {
+        //         // TDOO: log matched error
+        //         copy(&mut content_buffer, &mut f)
+        //             .context("failed to write scraped html content")?;
+        //     }
+        // };
     }
 
     Ok(job)

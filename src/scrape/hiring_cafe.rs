@@ -107,9 +107,15 @@ impl JobScraper for HiringCafeScraper {
 }
 
 impl JobScraper for TestHiringCafeScraper {
-    fn fetch(&self, _url: &Url) -> Result<impl Read> {
-        File::open(Path::new("listings/hiringcafe.html"))
-            .context("failed to open hiringcafe test listing")
+    fn fetch(&self, url: &Url) -> Result<impl Read> {
+        let path = url
+            .to_file_path()
+            .map_err(|()| Error::msg("failed to convert local URL scrape target to file path"))?;
+
+        File::open(&path).context(format!(
+            "failed to open hiringcafe listing HTML at {}",
+            path.to_string_lossy()
+        ))
     }
 
     fn parse(&self, reader: impl Read) -> Result<Job> {
