@@ -91,7 +91,7 @@ mod ply {
         EditArgs, NoArgs, ToArgs, YesArgs,
         application::{self, Application, Stage, StageType},
         config::PlyConfig,
-        document::{self, Document},
+        document::{self},
         scrape::{
             hiring_cafe::{HiringCafeScraper, TestHiringCafeScraper},
             scrape,

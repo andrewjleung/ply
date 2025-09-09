@@ -8,7 +8,7 @@ use std::fs::File;
 
 use crate::{
     PlyConfig,
-    document::{Document, Filename},
+    document::{Document, Filename, PreDocument},
     job::Job,
 };
 
@@ -84,5 +84,13 @@ impl Filename for Application {
         ];
 
         elements.join(".")
+    }
+}
+
+impl PreDocument for Application {
+    fn pre_document(&self) -> Self {
+        let mut record = self.to_owned();
+        record.stages.sort_by_key(|stage| stage.start_time);
+        record
     }
 }

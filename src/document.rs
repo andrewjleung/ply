@@ -10,7 +10,19 @@ pub trait Filename {
     fn filename(&self) -> String;
 }
 
-pub struct Document<Documentable: Serialize + DeserializeOwned + Filename> {
+/// This trait can be implemented to allow for a documentable to apply some
+/// transformation to itself before being documented, for instance sorting
+/// attributes.
+pub trait PreDocument
+where
+    Self: Sized + Clone,
+{
+    fn pre_document(&self) -> Self {
+        self.to_owned()
+    }
+}
+
+pub struct Document<Documentable: Serialize + DeserializeOwned + Filename + Clone + PreDocument> {
     pub record: Documentable,
     pub content: Option<String>,
 }
@@ -30,7 +42,7 @@ fn ensure_directory(dir: &Path) -> Result<()> {
 
 pub fn read<Documentable>(filename: &Path) -> Result<Document<Documentable>>
 where
-    Documentable: Serialize + DeserializeOwned + Filename,
+    Documentable: Serialize + DeserializeOwned + Filename + Clone + PreDocument,
 {
     let file = File::open(filename).context(format!("failed to open document at {}", filename))?;
 
@@ -40,11 +52,7 @@ where
     for line in BufReader::new(file).lines() {
         let line = line.context(format!("failed to read line in document at {}", filename))?;
         if line == "---" {
-            if in_frontmatter {
-                break;
-            } else {
-                in_frontmatter = true;
-            }
+            in_frontmatter = !in_frontmatter;
         } else if in_frontmatter {
             frontmatter.push_str(&line);
             frontmatter.push('\n');
@@ -65,15 +73,19 @@ where
     })
 }
 
-impl<Documentable: Serialize + DeserializeOwned + Filename> Document<Documentable> {
+impl<Documentable: Serialize + DeserializeOwned + Filename + Clone + PreDocument>
+    Document<Documentable>
+{
     pub fn write_new(&self, dir: &Path) -> Result<File> {
         ensure_directory(dir)?;
 
         let filename = self.record.filename();
         let mut f = File::create_new(dir.join(filename))
             .context(format!("failed to create document at {}", dir.as_str()))?;
-        let frontmatter = toml::to_string(&self.record)
-            .context("failed to serialize frontmatter for document")?;
+
+        let record = self.record.pre_document();
+        let frontmatter =
+            toml::to_string(&record).context("failed to serialize frontmatter for document")?;
 
         let content = format!(
             "---\n{frontmatter}---\n\n{}",
@@ -91,8 +103,9 @@ impl<Documentable: Serialize + DeserializeOwned + Filename> Document<Documentabl
 
         let filename = self.record.filename();
         let mut f = File::create(dir.join(filename)).context("failed to create document")?;
-        let frontmatter = toml::to_string(&self.record)
-            .context("failed to serialize frontmatter for document")?;
+        let record = self.record.pre_document();
+        let frontmatter =
+            toml::to_string(&record).context("failed to serialize frontmatter for document")?;
 
         let content = format!(
             "---\n{frontmatter}---\n\n{}",
