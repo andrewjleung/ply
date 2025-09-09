@@ -91,7 +91,7 @@ mod ply {
         EditArgs, NoArgs, ToArgs, YesArgs,
         application::{self, Application, Stage, StageType},
         config::PlyConfig,
-        document::{self},
+        document::{self, Filename},
         scrape::{
             hiring_cafe::{HiringCafeScraper, TestHiringCafeScraper},
             scrape,
@@ -111,22 +111,26 @@ mod ply {
 
         let url = Url::parse(&url).context("failed to parse given URL")?;
 
-        if args.local {
+        let application = if args.local {
             let scraper = TestHiringCafeScraper {};
-            let job = scrape(&scraper, &url, Some(Path::new("data/jobs")))
+            let job = scrape(&scraper, &url, Some(&config.data_dir.join("listings")))
                 .context("failed to scrape given URL")?;
 
-            application::new(job).write_new_document(config)?;
+            application::new(job)
         } else {
             let scraper = HiringCafeScraper {
                 listing_url: Some(url.clone()),
             };
 
-            let job = scrape(&scraper, &url, Some(Path::new("data/jobs")))
+            let job = scrape(&scraper, &url, Some(&config.data_dir.join("listings")))
                 .context("failed to scrape given URL")?;
 
-            application::new(job).write_new_document(config)?;
-        }
+            application::new(job)
+        };
+
+        application.write_new_document(config)?;
+
+        println!("application created at {}", application.filename());
 
         Ok(())
     }
