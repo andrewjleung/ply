@@ -46,6 +46,7 @@ enum Commands {
     Yes(YesArgs),
     No(NoArgs),
     Edit(EditArgs),
+    DataDirectory,
 }
 
 #[derive(Args)]
@@ -55,10 +56,6 @@ struct ToArgs {
 
     /// The company name of the job, this will be inferred from the URL if not present
     company: Option<String>,
-
-    /// Whether the URL refers to a local file
-    #[arg(short, long)]
-    local: bool,
 }
 
 #[derive(Args)]
@@ -93,11 +90,12 @@ mod ply {
         config::PlyConfig,
         document::{self, Filename},
         scrape::{
-            hiring_cafe::{HiringCafeScraper, TestHiringCafeScraper},
-            scrape,
+            JobScraper,
+            hiring_cafe::{self},
+            snapshot_content,
         },
     };
-    use anyhow::{Context, Error, Result};
+    use anyhow::{Context, Error, Result, anyhow};
     use camino::Utf8Path as Path;
     use chrono::Utc;
     use url::Url;
@@ -110,27 +108,21 @@ mod ply {
             .ok_or_else(|| Error::msg("support for interactive prompts is unimplemented"))?;
 
         let url = Url::parse(&url).context("failed to parse given URL")?;
+        let mut scrape = hiring_cafe::new(&url)
+            .context("failed to create hiring cafe scraper")?
+            .scrape(&url)
+            .context("failed to scrape content")?;
+        let app = application::new(scrape.job.clone());
 
-        let application = if args.local {
-            let scraper = TestHiringCafeScraper {};
-            let job = scrape(&scraper, &url, Some(&config.data_dir.join("listings")))
-                .context("failed to scrape given URL")?;
+        snapshot_content(
+            &mut scrape.content,
+            &config.data_dir.join("listings"),
+            &scrape.job.filename()?,
+        )
+        .context("failed to snapshot content")?;
+        app.write_new_document(config)?;
 
-            application::new(job)
-        } else {
-            let scraper = HiringCafeScraper {
-                listing_url: Some(url.clone()),
-            };
-
-            let job = scrape(&scraper, &url, Some(&config.data_dir.join("listings")))
-                .context("failed to scrape given URL")?;
-
-            application::new(job)
-        };
-
-        application.write_new_document(config)?;
-
-        println!("application created at {}", application.filename());
+        println!("application created at {}", app.filename());
 
         Ok(())
     }
@@ -192,6 +184,11 @@ mod ply {
         // open the document
         Err(Error::msg("unimplemented!"))
     }
+
+    pub fn data_directory(config: &PlyConfig) -> Result<()> {
+        println!("{}", config.data_dir);
+        Ok(())
+    }
 }
 
 fn main() -> Result<()> {
@@ -206,5 +203,6 @@ fn main() -> Result<()> {
         Commands::Edit(args) => {
             ply::edit(&config, &args).context("failed to process `edit` command")
         }
+        Commands::DataDirectory => ply::data_directory(&config),
     }
 }

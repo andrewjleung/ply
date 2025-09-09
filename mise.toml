@@ -1,0 +1,5 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
+[tasks.data]
+description = "inspect files in the data directory"
+run = 'yazi "$(ply data-directory)"'

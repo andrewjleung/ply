@@ -1,23 +1,33 @@
-use anyhow::{Context, Error, Result};
-use camino::Utf8Path as Path;
+use anyhow::{Context, Error, Result, anyhow};
 use regex::Regex;
 use scraper::{Html, Selector};
-use std::{
-    fs::File,
-    io::{Read, read_to_string},
-};
+use std::fs::read_to_string;
 use url::Url;
 
 use crate::{
     job::{Job, SalaryRange},
-    scrape::JobScraper,
+    scrape::{JobScraper, Scrape},
 };
 
-pub struct HiringCafeScraper {
-    pub listing_url: Option<url::Url>,
+pub struct HttpScraper {}
+pub struct LocalFileScraper {}
+
+pub enum HiringCafeScraper {
+    Http(HttpScraper),
+    LocalFile(LocalFileScraper),
 }
 
-pub struct TestHiringCafeScraper {}
+pub fn new(url: &Url) -> Result<HiringCafeScraper> {
+    match url.scheme() {
+        "file" => Ok(HiringCafeScraper::LocalFile(LocalFileScraper {})),
+        "https" => Ok(HiringCafeScraper::Http(HttpScraper {})),
+        _ => Err(anyhow!(format!(
+            "got unsupported URL scheme {}",
+            url.scheme()
+        )))
+        .unwrap(),
+    }
+}
 
 fn parse_title_and_team(document: &Html) -> Result<(String, String)> {
     let title_and_team_selector = Selector::parse("h2.font-extrabold").unwrap();
@@ -89,48 +99,64 @@ fn parse_salary_range(document: &Html) -> Result<Option<SalaryRange>> {
 }
 
 impl JobScraper for HiringCafeScraper {
-    fn parse(&self, reader: impl Read) -> Result<Job> {
-        let html = read_to_string(reader).context("failed to read HTML to string")?;
+    fn scrape(&self, url: &Url) -> Result<Scrape> {
+        match self {
+            HiringCafeScraper::Http(scraper) => scraper.scrape(url),
+            HiringCafeScraper::LocalFile(scraper) => scraper.scrape(url),
+        }
+    }
+}
+
+impl JobScraper for HttpScraper {
+    fn scrape(&self, url: &Url) -> Result<Scrape> {
+        let html = ureq::get(url.as_str())
+            .call()?
+            .body_mut()
+            .read_to_string()
+            .context("failed to read scraped HTTP response to string")?;
+
         let document = Html::parse_document(&html);
         let company = parse_company(&document)?;
         let (title, team) = parse_title_and_team(&document)?;
         let salary_range = parse_salary_range(&document)?;
 
-        Ok(Job {
-            listing_url: self.listing_url.to_owned(),
-            company,
-            title: title.to_owned(),
-            team: team.to_owned(),
-            salary_range,
+        Ok(Scrape {
+            job: Job {
+                listing_url: Some(url.to_owned()),
+                company,
+                title: title.to_owned(),
+                team: team.to_owned(),
+                salary_range,
+            },
+            content: html,
         })
     }
 }
 
-impl JobScraper for TestHiringCafeScraper {
-    fn fetch(&self, url: &Url) -> Result<impl Read> {
+impl JobScraper for LocalFileScraper {
+    fn scrape(&self, url: &Url) -> Result<Scrape> {
         let path = url
             .to_file_path()
             .map_err(|()| Error::msg("failed to convert local URL scrape target to file path"))?;
 
-        File::open(&path).context(format!(
-            "failed to open hiringcafe listing HTML at {}",
+        let html = read_to_string(&path).context(format!(
+            "failed to read hiringcafe listing at {}",
             path.to_string_lossy()
-        ))
-    }
-
-    fn parse(&self, reader: impl Read) -> Result<Job> {
-        let html = read_to_string(reader).context("failed to read HTML to string")?;
+        ))?;
         let document = Html::parse_document(&html);
         let company = parse_company(&document)?;
         let (title, team) = parse_title_and_team(&document)?;
         let salary_range = parse_salary_range(&document)?;
 
-        Ok(Job {
-            listing_url: None,
-            company,
-            title: title.to_owned(),
-            team: team.to_owned(),
-            salary_range,
+        Ok(Scrape {
+            job: Job {
+                listing_url: None,
+                company,
+                title: title.to_owned(),
+                team: team.to_owned(),
+                salary_range,
+            },
+            content: html,
         })
     }
 }
