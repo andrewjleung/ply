@@ -76,8 +76,8 @@ struct YesArgs {
 
 #[derive(Args)]
 struct NoArgs {
-    /// The company name of the job
-    company: Option<String>,
+    /// The path to the application document
+    path: String,
 }
 
 #[derive(Args)]
@@ -89,7 +89,7 @@ struct EditArgs {
 mod ply {
     use crate::{
         EditArgs, NoArgs, ToArgs, YesArgs,
-        application::{self, Application, Stage},
+        application::{self, Application, Stage, StageType},
         config::PlyConfig,
         document::{self, Document},
         scrape::{
@@ -164,12 +164,20 @@ mod ply {
     }
 
     pub fn no(config: &PlyConfig, args: &NoArgs) -> Result<()> {
-        // fetch all applications for the company that aren't ghosted
+        let mut document = document::read::<Application>(Path::new(&args.path))?;
 
-        // prompt to select application
+        document.record.stages.push(Stage {
+            start_time: Utc::now(),
+            deadline: None,
+            name: None,
+            stage_type: StageType::Rejected,
+        });
 
-        // write to the document
-        Err(Error::msg("unimplemented!"))
+        document
+            .write(&config.data_dir)
+            .context("failed to write new stage to document")?;
+
+        Ok(())
     }
 
     pub fn edit(config: &PlyConfig, args: &EditArgs) -> Result<()> {
