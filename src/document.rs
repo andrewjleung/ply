@@ -45,14 +45,12 @@ where
             } else {
                 in_frontmatter = true;
             }
+        } else if in_frontmatter {
+            frontmatter.push_str(&line);
+            frontmatter.push('\n');
         } else {
-            if in_frontmatter {
-                frontmatter.push_str(&line);
-                frontmatter.push_str("\n");
-            } else {
-                content.push_str(&line);
-                content.push_str("\n");
-            }
+            content.push_str(&line);
+            content.push('\n');
         };
     }
 
@@ -72,7 +70,8 @@ impl<Documentable: Serialize + DeserializeOwned + Filename> Document<Documentabl
         ensure_directory(dir)?;
 
         let filename = self.record.filename();
-        let mut f = File::create_new(dir.join(filename)).context("failed to create document")?;
+        let mut f = File::create_new(dir.join(filename))
+            .context(format!("failed to create document at {}", dir.as_str()))?;
         let frontmatter = toml::to_string(&self.record)
             .context("failed to serialize frontmatter for document")?;
 

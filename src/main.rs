@@ -186,7 +186,7 @@ fn main() -> Result<()> {
     let args = Ply::parse();
 
     // TODO: take in data directory, within a ply.toml
-    let config = config::default_config();
+    let config = config::config();
     match args.command {
         Commands::To(args) => ply::to(&config, &args).context("failed to process `to` command"),
         Commands::Yes(args) => ply::yes(&config, &args).context("failed to process `yes` command"),
