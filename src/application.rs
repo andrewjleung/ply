@@ -1,9 +1,10 @@
-use std::fs::File;
-
 use anyhow::{Context, Result};
 use bon::Builder;
+use camino::Utf8Path as Path;
 use chrono::{DateTime, Utc};
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
+use std::fs::File;
 
 use crate::{
     PlyConfig,
@@ -11,8 +12,6 @@ use crate::{
     job::Job,
 };
 
-/// For now, an application will be uniquely identified by:
-/// (cycle, company, title, team, applied_at, listing_url)
 #[derive(Builder, Serialize, Deserialize, Clone)]
 pub struct Application {
     pub job: Job,
@@ -25,9 +24,9 @@ pub struct Application {
     pub stages: Vec<Stage>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
 pub enum StageType {
-    Application,
+    Applied,
     Screen,
     Technical,
     Behavioral,
@@ -37,10 +36,10 @@ pub enum StageType {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Stage {
-    start_time: DateTime<Utc>,
-    deadline: Option<DateTime<Utc>>,
-    name: Option<String>,
-    stage_type: StageType,
+    pub start_time: DateTime<Utc>,
+    pub deadline: Option<DateTime<Utc>>,
+    pub name: Option<String>,
+    pub stage_type: StageType,
 }
 
 pub fn new(job: Job) -> Application {
@@ -52,24 +51,10 @@ pub fn new(job: Job) -> Application {
         .stages(vec![Stage {
             start_time: now,
             deadline: None,
-            stage_type: StageType::Application,
+            stage_type: StageType::Applied,
             name: None,
         }])
         .build()
-}
-
-impl Filename for Application {
-    fn filename(&self) -> String {
-        let elements: Vec<String> = vec![
-            self.applied_at.format("%Y%m%d%H%M%S%3f").to_string(),
-            Self::normalize_filename_attribute(&self.job.company),
-            Self::normalize_filename_attribute(&self.job.title),
-            Self::normalize_filename_attribute(&self.job.team),
-            String::from("md"),
-        ];
-
-        elements.join(".")
-    }
 }
 
 impl Application {
@@ -84,6 +69,20 @@ impl Application {
     }
 
     fn normalize_filename_attribute(name: &str) -> String {
-        name.to_lowercase().replace(" ", "_")
+        name.to_lowercase().replace(" ", "_").replace(".", "")
+    }
+}
+
+impl Filename for Application {
+    fn filename(&self) -> String {
+        let elements: Vec<String> = vec![
+            self.applied_at.format("%Y%m%d%H%M%S%3f").to_string(),
+            Self::normalize_filename_attribute(&self.job.company),
+            Self::normalize_filename_attribute(&self.job.title),
+            Self::normalize_filename_attribute(&self.job.team),
+            String::from("md"),
+        ];
+
+        elements.join(".")
     }
 }

@@ -1,12 +1,7 @@
-use std::collections::HashSet;
-use std::fs;
-use std::fs::DirBuilder;
-use std::os;
-
 use anyhow::{Context, Result};
-use camino::Utf8Path as Path;
-use camino::Utf8PathBuf as PathBuf;
 use clap::{Args, Parser, Subcommand};
+
+use crate::{application::StageType, config::PlyConfig};
 
 /*
 * - store each application in toml/markdown
@@ -33,14 +28,10 @@ use clap::{Args, Parser, Subcommand};
 */
 
 mod application;
+mod config;
 mod document;
 mod job;
 mod scrape;
-
-struct PlyConfig {
-    data_dir: PathBuf,
-    days_to_ghost: u16,
-}
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -64,12 +55,23 @@ struct ToArgs {
 
     /// The company name of the job, this will be inferred from the URL if not present
     company: Option<String>,
+
+    /// Whether the URL refers to a local file
+    #[arg(short, long)]
+    local: bool,
 }
 
 #[derive(Args)]
 struct YesArgs {
-    /// The company name of the job
-    company: Option<String>,
+    /// The path to the application document
+    path: String,
+
+    /// The next stage
+    #[arg(value_enum)]
+    next_stage: StageType,
+
+    /// The next stage deadline
+    deadline: Option<String>,
 }
 
 #[derive(Args)]
@@ -86,14 +88,18 @@ struct EditArgs {
 
 mod ply {
     use crate::{
-        EditArgs, NoArgs, PlyConfig, ToArgs, YesArgs,
-        application::{self, Application},
+        EditArgs, NoArgs, ToArgs, YesArgs,
+        application::{self, Application, Stage},
+        config::PlyConfig,
+        document::{self, Document},
         scrape::{
             hiring_cafe::{HiringCafeScraper, TestHiringCafeScraper},
             scrape,
         },
     };
     use anyhow::{Context, Error, Result};
+    use camino::Utf8Path as Path;
+    use chrono::Utc;
     use url::Url;
 
     pub fn to(config: &PlyConfig, args: &ToArgs) -> Result<()> {
@@ -103,30 +109,58 @@ mod ply {
             .clone()
             .ok_or_else(|| Error::msg("support for interactive prompts is unimplemented"))?;
 
-        let scraper = TestHiringCafeScraper {};
-        let job = scrape(
-            &scraper,
-            &Url::parse(&url).context("failed to parse given URL")?,
-        )
-        .context("failed to scrape given URL")?;
+        let url = Url::parse(&url).context("failed to parse given URL")?;
 
-        application::new(job).write_new_document(config)?;
+        if args.local {
+            let scraper = TestHiringCafeScraper {};
+            let job = scrape(&scraper, &url, Some(Path::new("data/jobs")))
+                .context("failed to scrape given URL")?;
 
-        // open the document if requested
+            application::new(job).write_new_document(config)?;
+        } else {
+            let scraper = HiringCafeScraper {
+                listing_url: Some(url.clone()),
+            };
+
+            let job = scrape(&scraper, &url, Some(Path::new("data/jobs")))
+                .context("failed to scrape given URL")?;
+
+            application::new(job).write_new_document(config)?;
+        }
+
         Ok(())
     }
 
     pub fn yes(config: &PlyConfig, args: &YesArgs) -> Result<()> {
-        // fetch all applications for the company that aren't ghosted
+        let mut document = document::read::<Application>(Path::new(&args.path))?;
+        let now = Utc::now();
+        let deadline = match &args.deadline {
+            Some(deadline) => Some(
+                tu::parse_date_args(
+                    &deadline
+                        .split(" ")
+                        .map(|s| s.to_owned())
+                        .collect::<Vec<_>>(),
+                    now,
+                )
+                .map_err(anyhow::Error::new)
+                .context("failed to parse deadline")?,
+            ),
+            None => None,
+        };
 
-        // prompt to select application
+        document.record.stages.push(Stage {
+            start_time: now,
+            deadline,
+            name: None,
+            stage_type: args.next_stage,
+        });
 
-        // prompt for next steps
+        document
+            .write(&config.data_dir)
+            .context("failed to write new stage to document")?;
 
-        // write to the document
-
-        // open the document if requested
-        Err(Error::msg("unimplemented!"))
+        Ok(())
     }
 
     pub fn no(config: &PlyConfig, args: &NoArgs) -> Result<()> {
@@ -152,11 +186,7 @@ fn main() -> Result<()> {
     let args = Ply::parse();
 
     // TODO: take in data directory, within a ply.toml
-    let config = PlyConfig {
-        data_dir: Path::new("data").to_path_buf(),
-        days_to_ghost: 90,
-    };
-
+    let config = config::default_config();
     match args.command {
         Commands::To(args) => ply::to(&config, &args).context("failed to process `to` command"),
         Commands::Yes(args) => ply::yes(&config, &args).context("failed to process `yes` command"),

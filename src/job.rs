@@ -1,12 +1,16 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
 use bon::Builder;
 use camino::{Utf8Path as Path, Utf8PathBuf as PathBuf};
 use chrono::{DateTime, Utc};
+use hex;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File},
     io::Write,
 };
+
+use crate::document::Filename;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SalaryRange {
@@ -31,4 +35,27 @@ pub struct Job {
     pub team: String,
 
     pub salary_range: Option<SalaryRange>,
+}
+
+// TODO: dedup
+fn normalize_filename_attribute(name: &str) -> String {
+    name.to_lowercase().replace(" ", "_")
+}
+
+impl Job {
+    pub fn filename(&self) -> Result<String> {
+        let url = self.listing_url.clone().ok_or_else(|| {
+            Error::msg("cannot create unique filename for job without a listing URL")
+        })?;
+        let hash = Sha256::digest(url.as_str());
+        let elements: Vec<String> = vec![
+            hex::encode(hash).chars().take(7).collect(),
+            normalize_filename_attribute(&self.company),
+            normalize_filename_attribute(&self.title),
+            normalize_filename_attribute(&self.team),
+            String::from("md"),
+        ];
+
+        Ok(elements.join("."))
+    }
 }
