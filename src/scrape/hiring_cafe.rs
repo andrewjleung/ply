@@ -6,7 +6,7 @@ use url::Url;
 
 use crate::{
     job::{Job, SalaryRange},
-    scrape::{JobScraper, Scrape},
+    scrape::{JobScraper, ScrapedContent},
 };
 
 pub struct HttpScraper {}
@@ -24,8 +24,7 @@ pub fn new(url: &Url) -> Result<HiringCafeScraper> {
         _ => Err(anyhow!(format!(
             "got unsupported URL scheme {}",
             url.scheme()
-        )))
-        .unwrap(),
+        ))),
     }
 }
 
@@ -99,7 +98,7 @@ fn parse_salary_range(document: &Html) -> Result<Option<SalaryRange>> {
 }
 
 impl JobScraper for HiringCafeScraper {
-    fn scrape(&self, url: &Url) -> Result<Scrape> {
+    fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
         match self {
             HiringCafeScraper::Http(scraper) => scraper.scrape(url),
             HiringCafeScraper::LocalFile(scraper) => scraper.scrape(url),
@@ -108,7 +107,7 @@ impl JobScraper for HiringCafeScraper {
 }
 
 impl JobScraper for HttpScraper {
-    fn scrape(&self, url: &Url) -> Result<Scrape> {
+    fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
         let html = ureq::get(url.as_str())
             .call()?
             .body_mut()
@@ -120,7 +119,7 @@ impl JobScraper for HttpScraper {
         let (title, team) = parse_title_and_team(&document)?;
         let salary_range = parse_salary_range(&document)?;
 
-        Ok(Scrape {
+        Ok(ScrapedContent {
             job: Job {
                 listing_url: Some(url.to_owned()),
                 company,
@@ -134,7 +133,7 @@ impl JobScraper for HttpScraper {
 }
 
 impl JobScraper for LocalFileScraper {
-    fn scrape(&self, url: &Url) -> Result<Scrape> {
+    fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
         let path = url
             .to_file_path()
             .map_err(|()| Error::msg("failed to convert local URL scrape target to file path"))?;
@@ -148,7 +147,7 @@ impl JobScraper for LocalFileScraper {
         let (title, team) = parse_title_and_team(&document)?;
         let salary_range = parse_salary_range(&document)?;
 
-        Ok(Scrape {
+        Ok(ScrapedContent {
             job: Job {
                 listing_url: None,
                 company,

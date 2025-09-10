@@ -1,6 +1,8 @@
+use anyhow::anyhow;
 use anyhow::{Context, Error, Result};
 use camino::Utf8Path as Path;
 use camino::Utf8PathBuf as PathBuf;
+use clap::ValueEnum;
 use std::{
     fs::{DirBuilder, File},
     io::Write,
@@ -9,15 +11,35 @@ use url::Url;
 
 use crate::job::Job;
 
+pub mod ashbyhq;
 pub mod hiring_cafe;
 
-pub struct Scrape {
+pub struct ScrapedContent {
     pub job: Job,
     pub content: String,
 }
 
 pub trait JobScraper {
-    fn scrape(&self, url: &Url) -> Result<Scrape>;
+    fn scrape(&self, url: &Url) -> Result<ScrapedContent>;
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum JobScraperKind {
+    HiringCafe,
+    AshbyHQ,
+}
+
+impl JobScraper for JobScraperKind {
+    fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
+        match self {
+            JobScraperKind::HiringCafe => hiring_cafe::new(url)
+                .context("failed to create hiring cafe scraper")?
+                .scrape(url),
+            JobScraperKind::AshbyHQ => ashbyhq::new(url)
+                .context("failed to create ashbyhq scraper")?
+                .scrape(url),
+        }
+    }
 }
 
 pub fn snapshot_content(content: &mut str, content_dir: &Path, filename: &str) -> Result<PathBuf> {
@@ -52,4 +74,45 @@ pub fn snapshot_content(content: &mut str, content_dir: &Path, filename: &str) -
         .context("failed to write scraped markdown content")?;
 
     Ok(filepath)
+}
+
+fn infer_scraper_kind(
+    url: Url,
+    scraper_kind: Option<JobScraperKind>,
+) -> Result<(Url, JobScraperKind)> {
+    let scraper_kind = match (url.scheme(), scraper_kind) {
+        ("https", None) => match url.domain() {
+            Some("hiring.cafe") => JobScraperKind::HiringCafe,
+            Some("jobs.ashbyhq.com") => JobScraperKind::AshbyHQ,
+            Some(domain) => {
+                return Err(anyhow!(
+                    "could not infer scraper kind from unrecognized HTTPS domain {domain}"
+                ));
+            }
+            None => {
+                return Err(anyhow!(
+                    "could not infer scraper kind from domain-less HTTPS URL {url}"
+                ));
+            }
+        },
+        (_, None) => {
+            return Err(anyhow!(
+                "cannot infer scraper kind from URL scheme {}, please specify a scraper",
+                url.scheme()
+            ));
+        }
+        (_, Some(kind)) => kind,
+    };
+
+    Ok((url, scraper_kind))
+}
+
+pub fn scrape(url: &Url, scraper_kind: Option<JobScraperKind>) -> Result<ScrapedContent> {
+    let (url, scraper_kind) = infer_scraper_kind(url.to_owned(), scraper_kind)?;
+
+    match scraper_kind {
+        // TODO: this API is weird... why do we need to supply URL twice?
+        JobScraperKind::HiringCafe => hiring_cafe::new(&url)?.scrape(&url),
+        JobScraperKind::AshbyHQ => ashbyhq::new(&url)?.scrape(&url),
+    }
 }
