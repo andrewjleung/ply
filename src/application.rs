@@ -7,7 +7,7 @@ use std::fs::File;
 
 use crate::{
     PlyConfig,
-    data::normalize_filename_attr,
+    data::timestamp_filename,
     document::{Document, Filename, PreDocument},
     job::Job,
 };
@@ -71,15 +71,14 @@ impl Application {
 
 impl Filename for Application {
     fn filename(&self) -> String {
-        let elements: Vec<String> = vec![
-            self.applied_at.format("%Y%m%d%H%M%S%3f").to_string(),
-            normalize_filename_attr(&self.job.company),
-            normalize_filename_attr(&self.job.title),
-            normalize_filename_attr(&self.job.team),
-            String::from("md"),
-        ];
-
-        elements.join(".")
+        timestamp_filename(
+            &self.applied_at,
+            vec![
+                self.job.company.to_owned(),
+                self.job.title.to_owned(),
+                self.job.team.to_owned(),
+            ],
+        )
     }
 }
 

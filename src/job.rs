@@ -1,9 +1,8 @@
 use anyhow::{Error, Result};
 use bon::Builder;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
-use crate::data::normalize_filename_attr;
+use crate::data::id_filename;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SalaryRange {
@@ -31,15 +30,14 @@ impl Job {
         let url = self.listing_url.clone().ok_or_else(|| {
             Error::msg("cannot create unique filename for job without a listing URL")
         })?;
-        let hash = Sha256::digest(url.as_str());
-        let elements: Vec<String> = vec![
-            hex::encode(hash).chars().take(7).collect(),
-            normalize_filename_attr(&self.company),
-            normalize_filename_attr(&self.title),
-            normalize_filename_attr(&self.team),
-            String::from("md"),
-        ];
 
-        Ok(elements.join("."))
+        Ok(id_filename(
+            url.as_str(),
+            vec![
+                self.company.to_owned(),
+                self.title.to_owned(),
+                self.team.to_owned(),
+            ],
+        ))
     }
 }
