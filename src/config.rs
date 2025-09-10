@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::read_to_string;
 
 use anyhow::Context;
-use anyhow::Error;
 use camino::Utf8Path as Path;
 use camino::Utf8PathBuf as PathBuf;
 use serde::Deserialize;
@@ -15,12 +14,14 @@ const DAYS_TO_GHOST: u16 = 90;
 pub struct PlyConfig {
     pub data_dir: PathBuf,
     pub days_to_ghost: u16,
+    pub cycle: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct PartialPlyConfig {
     pub data_dir: Option<PathBuf>,
     pub days_to_ghost: Option<u16>,
+    pub cycle: Option<String>,
 }
 
 fn default_config_path() -> PathBuf {
@@ -43,6 +44,7 @@ impl From<PartialPlyConfig> for PlyConfig {
         PlyConfig {
             data_dir,
             days_to_ghost: config.days_to_ghost.unwrap_or(DAYS_TO_GHOST),
+            cycle: config.cycle,
         }
     }
 }

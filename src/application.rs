@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use bon::Builder;
-use camino::Utf8Path as Path;
 use chrono::{DateTime, Utc};
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};

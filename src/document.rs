@@ -1,9 +1,9 @@
 use anyhow::{Context, Error, Result};
 use camino::Utf8Path as Path;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Serialize, de::DeserializeOwned};
 use std::{
     fs::{DirBuilder, File},
-    io::{BufRead, BufReader, BufWriter, Write},
+    io::{BufRead, BufReader, Write},
 };
 
 pub trait Filename {

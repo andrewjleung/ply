@@ -1,16 +1,7 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{Error, Result};
 use bon::Builder;
-use camino::{Utf8Path as Path, Utf8PathBuf as PathBuf};
-use chrono::{DateTime, Utc};
-use hex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{
-    fs::{self, File},
-    io::Write,
-};
-
-use crate::document::Filename;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SalaryRange {
@@ -27,13 +18,9 @@ impl SalaryRange {
 #[derive(Builder, Serialize, Deserialize, Clone)]
 pub struct Job {
     pub listing_url: Option<url::Url>,
-
     pub company: String,
-
     pub title: String,
-
     pub team: String,
-
     pub salary_range: Option<SalaryRange>,
 }
 
