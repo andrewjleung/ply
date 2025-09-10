@@ -88,7 +88,7 @@ impl<Documentable: Serialize + DeserializeOwned + Filename + Clone + PreDocument
             toml::to_string(&record).context("failed to serialize frontmatter for document")?;
 
         let content = format!(
-            "---\n{frontmatter}---\n\n{}",
+            "---\n{frontmatter}---\n{}",
             self.content.clone().unwrap_or("".to_owned())
         );
 
@@ -108,7 +108,7 @@ impl<Documentable: Serialize + DeserializeOwned + Filename + Clone + PreDocument
             toml::to_string(&record).context("failed to serialize frontmatter for document")?;
 
         let content = format!(
-            "---\n{frontmatter}---\n\n{}",
+            "---\n{frontmatter}---\n{}",
             self.content.clone().unwrap_or("".to_owned())
         );
 
