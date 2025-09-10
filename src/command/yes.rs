@@ -12,7 +12,7 @@ pub struct Yes {
     #[arg(value_enum)]
     pub next_stage: application::StageType,
 
-    /// The next stage deadline
+    /// The next stage deadline, this may be a date/timestamp or a natural language string e.g. "in 1 week"
     pub deadline: Option<String>,
 }
 
