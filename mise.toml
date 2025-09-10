@@ -7,3 +7,7 @@ run = 'yazi "$(ply data-directory)"'
 [tasks.config]
 description = "open the ply config"
 run = "nvim $(ply config)"
+
+[tasks.completions]
+description = "setup completions for zsh"
+run = 'ply generate zsh > /usr/local/share/zsh/site-functions/_ply'

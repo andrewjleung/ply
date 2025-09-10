@@ -22,3 +22,4 @@ tu = "0.4"
 ureq = "3.1"
 url = { version = "2.5", features = ["serde"] }
 serde_json = "1.0.143"
+clap_complete = "4.5.57"
