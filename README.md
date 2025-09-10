@@ -6,9 +6,9 @@
 
 It exposes a simple CLI for:
 
-1. Tracking new applications - `ply to <URL>`
-2. Advancing existing applications - `ply yes <PATH> <NEXT_STAGE> [DEADLINE]`
-3. Terminating existing applications - `ply no <PATH>`
+1. Tracking new applications: `ply to <URL>`
+2. Advancing existing applications: `ply yes <PATH> <NEXT_STAGE> [DEADLINE]`
+3. Terminating existing applications: `ply no <PATH>`
 
 ## Tracking
 
@@ -26,10 +26,10 @@ Tracking applications with clicks and GUIs (Notion 😡) was pissing me off so I
 
 `ply` aims to be a tool for me. It prioritizes:
 
-1. _Instantaneousness_ - track/update an application in as few steps as possible
-2. _Programmability_ - both in terms of implementing CLI features and interfacing it with other command-line utilities like `fzf`
-3. _Simplicity_ - applications are just simple text documents
-4. _Hoarder-satisfaction_ - keep track of every step of every application and the details of each job listing
+1. **Instantaneousness**: track/update an application in as few steps as possible
+2. **Programmability**: both in terms of implementing CLI features and interfacing it with other command-line utilities like `fzf`
+3. **Simplicity**: applications are just simple text documents
+4. **Hoarder-satisfaction**: keep track of every step of every application and the details of each job listing
 
 ## Job Board Support
 
