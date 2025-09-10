@@ -2,10 +2,11 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 use crate::{
-    command::{data_directory::DataDirectory, no::No, to::To, yes::Yes},
+    command::{config::Config, data_directory::DataDirectory, no::No, to::To, yes::Yes},
     config::PlyConfig,
 };
 
+mod config;
 mod data_directory;
 mod no;
 mod to;
@@ -27,6 +28,9 @@ pub enum Command {
     /// Fetch the configured data directory
     DataDirectory(DataDirectory),
 
+    /// Fetch the config path
+    Config(Config),
+
     /// Mark an application as rejected
     No(No),
 
@@ -44,6 +48,7 @@ pub fn parse() -> Ply {
 impl Run for Ply {
     fn run(&self, config: &PlyConfig) -> Result<()> {
         match &self.command {
+            Command::Config(cmd) => cmd.run(config),
             Command::DataDirectory(cmd) => cmd.run(config),
             Command::No(cmd) => cmd.run(config),
             Command::To(cmd) => cmd.run(config),

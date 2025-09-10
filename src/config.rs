@@ -24,7 +24,7 @@ struct PartialPlyConfig {
     pub cycle: Option<String>,
 }
 
-fn default_config_path() -> PathBuf {
+pub fn default_config_path() -> PathBuf {
     dirs::home_dir()
         .map(|dir| {
             PathBuf::from_path_buf(dir.join(".config/ply/ply.toml"))
