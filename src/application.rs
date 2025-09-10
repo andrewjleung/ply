@@ -7,6 +7,7 @@ use std::fs::File;
 
 use crate::{
     PlyConfig,
+    data::normalize_filename_attr,
     document::{Document, Filename, PreDocument},
     job::Job,
 };
@@ -66,19 +67,15 @@ impl Application {
         doc.write_new(&config.data_dir)
             .context("failed to write application")
     }
-
-    fn normalize_filename_attribute(name: &str) -> String {
-        name.to_lowercase().replace(" ", "_").replace(".", "")
-    }
 }
 
 impl Filename for Application {
     fn filename(&self) -> String {
         let elements: Vec<String> = vec![
             self.applied_at.format("%Y%m%d%H%M%S%3f").to_string(),
-            Self::normalize_filename_attribute(&self.job.company),
-            Self::normalize_filename_attribute(&self.job.title),
-            Self::normalize_filename_attribute(&self.job.team),
+            normalize_filename_attr(&self.job.company),
+            normalize_filename_attr(&self.job.title),
+            normalize_filename_attr(&self.job.team),
             String::from("md"),
         ];
 

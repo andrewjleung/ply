@@ -1,10 +1,12 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use camino::Utf8Path as Path;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
-    fs::{DirBuilder, File},
+    fs::File,
     io::{BufRead, BufReader, Write},
 };
+
+use crate::data::ensure_directory;
 
 pub trait Filename {
     fn filename(&self) -> String;
@@ -25,19 +27,6 @@ where
 pub struct Document<Documentable: Serialize + DeserializeOwned + Filename + Clone + PreDocument> {
     pub record: Documentable,
     pub content: Option<String>,
-}
-
-fn ensure_directory(dir: &Path) -> Result<()> {
-    if dir.is_file() {
-        return Err(Error::msg(format!(
-            "failed to create directory {dir}: is a file"
-        )));
-    }
-
-    DirBuilder::new()
-        .recursive(true)
-        .create(dir)
-        .context("failed to create destination directory for document")
 }
 
 pub fn read<Documentable>(filename: &Path) -> Result<Document<Documentable>>

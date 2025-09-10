@@ -4,6 +4,7 @@ use anyhow::Result;
 mod application;
 mod command;
 mod config;
+mod data;
 mod document;
 mod job;
 mod scrape;
