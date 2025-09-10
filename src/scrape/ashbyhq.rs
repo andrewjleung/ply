@@ -1,7 +1,7 @@
 use anyhow::{Context, Error, Result, anyhow};
 use scraper::{Html, Selector};
 use serde_json::Value;
-use std::fs::read_to_string;
+use std::{fs::read_to_string, ops::Not};
 use url::Url;
 
 use crate::{
@@ -28,16 +28,18 @@ pub fn new(url: &Url) -> Result<AshbyHqScraper> {
     }
 }
 
-fn parse_title_and_team(data: &Value) -> Result<(String, String)> {
+fn parse_title_and_team(data: &Value) -> Result<(String, Option<String>)> {
     let title_and_team = data["title"].as_str().ok_or_else(|| {
         Error::msg("failed to parse key 'title' in job posting JSON data as string")
     })?;
 
-    let (title, team) = title_and_team.split_once(", ").ok_or_else(|| {
-        Error::msg("failed to separate title and team from job posting JSON data")
-    })?;
-
-    Ok((title.to_owned(), team.to_owned()))
+    Ok(match title_and_team.split_once(", ") {
+        Some((title, team)) => (
+            title.to_owned(),
+            team.is_empty().not().then_some(team).map(|t| t.to_owned()),
+        ),
+        None => (title_and_team.to_owned(), None),
+    })
 }
 
 fn parse_company(data: &Value) -> Result<String> {
@@ -65,21 +67,17 @@ fn parse_salary_range(data: &Value) -> Result<Option<SalaryRange>> {
     }
 
     let min = data["baseSalary"]["value"]["minValue"]
-        .as_str()
-        .and_then(|s| s.parse::<u32>().ok())
-        .ok_or_else(|| {
-            anyhow!(
-                "failed to parse key 'baseSalary.value.minValue' in job posting JSON data as u32"
-            )
+        .as_u64().ok_or_else(|| anyhow!("failed to parse key 'baseSalary.value.minValue into u64"))
+        .and_then(|u| {
+            u32::try_from(u).context(format!("failed to parse value {u} key 'baseSalary.value.minValue' in job posting JSON data as u32")
+)
         })?;
 
     let max = data["baseSalary"]["value"]["maxValue"]
-        .as_str()
-        .and_then(|s| s.parse::<u32>().ok())
-        .ok_or_else(|| {
-            anyhow!(
-                "failed to parse key 'baseSalary.value.maxValue' in job posting JSON data as u32"
-            )
+        .as_u64().ok_or_else(|| anyhow!("failed to parse key 'baseSalary.value.maxValue into u64"))
+        .and_then(|u| {
+            u32::try_from(u).context(format!("failed to parse value {u} key 'baseSalary.value.maxValue' in job posting JSON data as u32")
+)
         })?;
 
     Ok(Some(SalaryRange {
@@ -105,7 +103,8 @@ impl JobScraper for HttpScraper {
             .read_to_string()
             .context("failed to read scraped HTTP response to string")?;
 
-        let job_posting_data_selector = Selector::parse("head > script:nth-child(19)").unwrap();
+        let job_posting_data_selector =
+            Selector::parse(r#"script[type="application/ld+json"]"#).unwrap();
         let document = Html::parse_document(&html);
         let job_posting_data = document
             .select(&job_posting_data_selector)

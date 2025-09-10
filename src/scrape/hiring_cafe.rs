@@ -1,7 +1,7 @@
 use anyhow::{Context, Error, Result, anyhow};
 use regex::Regex;
 use scraper::{Html, Selector};
-use std::fs::read_to_string;
+use std::{fs::read_to_string, ops::Not};
 use url::Url;
 
 use crate::{
@@ -28,7 +28,7 @@ pub fn new(url: &Url) -> Result<HiringCafeScraper> {
     }
 }
 
-fn parse_title_and_team(document: &Html) -> Result<(String, String)> {
+fn parse_title_and_team(document: &Html) -> Result<(String, Option<String>)> {
     let title_and_team_selector = Selector::parse("h2.font-extrabold").unwrap();
     let title_and_team = document
         .select(&title_and_team_selector)
@@ -39,11 +39,13 @@ fn parse_title_and_team(document: &Html) -> Result<(String, String)> {
         .collect::<Vec<_>>()
         .join("");
 
-    let (title, team) = title_and_team
-        .split_once(", ")
-        .ok_or_else(|| Error::msg("failed to parse title and team from document"))?;
-
-    Ok((title.to_owned(), team.to_owned()))
+    Ok(match title_and_team.split_once(", ") {
+        Some((title, team)) => (
+            title.to_owned(),
+            team.is_empty().not().then_some(team).map(|t| t.to_owned()),
+        ),
+        None => (title_and_team, None),
+    })
 }
 
 fn parse_company(document: &Html) -> Result<String> {

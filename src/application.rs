@@ -71,14 +71,12 @@ impl Application {
 
 impl Filename for Application {
     fn filename(&self) -> String {
-        timestamp_filename(
-            &self.applied_at,
-            vec![
-                self.job.company.to_owned(),
-                self.job.title.to_owned(),
-                self.job.team.to_owned(),
-            ],
-        )
+        let mut attrs = vec![self.job.company.to_owned(), self.job.title.to_owned()];
+        if let Some(team) = &self.job.team {
+            attrs.push(team.to_owned());
+        }
+
+        timestamp_filename(&self.applied_at, attrs)
     }
 }
 

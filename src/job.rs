@@ -21,7 +21,7 @@ pub struct Job {
     pub listing_url: Option<url::Url>,
     pub company: String,
     pub title: String,
-    pub team: String,
+    pub team: Option<String>,
     pub salary_range: Option<SalaryRange>,
 }
 
@@ -31,13 +31,11 @@ impl Job {
             Error::msg("cannot create unique filename for job without a listing URL")
         })?;
 
-        Ok(id_filename(
-            url.as_str(),
-            vec![
-                self.company.to_owned(),
-                self.title.to_owned(),
-                self.team.to_owned(),
-            ],
-        ))
+        let mut attrs = vec![self.company.to_owned(), self.title.to_owned()];
+        if let Some(team) = &self.team {
+            attrs.push(team.to_owned());
+        }
+
+        Ok(id_filename(url.as_str(), attrs))
     }
 }

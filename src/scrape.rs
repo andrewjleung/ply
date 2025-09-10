@@ -65,7 +65,7 @@ pub fn snapshot_content(content: &mut str, content_dir: &Path, filename: &str) -
     ))?;
 
     let markdown_content = htmd::HtmlToMarkdown::builder()
-        .skip_tags(vec!["script", "style"])
+        .skip_tags(vec!["style"])
         .build()
         .convert(content)
         .context("failed to convert scraped HTML to markdown")?;
