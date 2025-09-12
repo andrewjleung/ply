@@ -59,6 +59,14 @@ pub fn snapshot_content(content: &mut str, content_dir: &Path, filename: &str) -
         ))?;
 
     let filepath = content_dir.join(filename);
+
+    if filepath.try_exists().context(format!(
+        "failed to determine if snapshotted content already exists at {}",
+        filepath
+    ))? {
+        return Ok(filepath);
+    };
+
     let mut f = File::create_new(&filepath).context(format!(
         "failed to create file {} for scraped content",
         filepath

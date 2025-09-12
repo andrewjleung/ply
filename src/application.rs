@@ -42,7 +42,7 @@ pub struct Stage {
     pub stage_type: StageType,
 }
 
-pub fn new(job: Job) -> Application {
+pub fn new(job: Job, cycle: Option<String>) -> Application {
     let now = Utc::now();
 
     Application::builder()
@@ -54,6 +54,7 @@ pub fn new(job: Job) -> Application {
             stage_type: StageType::Applied,
             name: None,
         }])
+        .maybe_cycle(cycle)
         .build()
 }
 

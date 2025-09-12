@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use anyhow::{Context, Result};
 use clap::Args;
 
@@ -19,21 +21,34 @@ pub struct To {
     /// The scraper to use, this will be inferred when the given URL scheme is 'https' and required
     /// if it is 'file'
     pub scraper: Option<JobScraperKind>,
+
+    // The job application cycle for this application
+    pub cycle: Option<String>,
 }
 
 impl Run for To {
     fn run(&self, config: &config::PlyConfig) -> Result<()> {
         let url = Url::parse(&self.url).context("failed to parse given URL")?;
         let mut scraped = scrape(&url, self.scraper).context("failed to scrape URL")?;
-        let app = application::new(scraped.job.clone());
+        let app = application::new(
+            scraped.job.to_owned(),
+            self.cycle
+                .to_owned()
+                .and_then(|c| c.is_empty().not().then_some(c))
+                .to_owned()
+                .or(config.default_cycle.to_owned()),
+        );
 
         // TODO: handle repeat applications to the same listing
-        scrape::snapshot_content(
-            &mut scraped.content,
-            &config.data_dir.join("listings"),
-            &scraped.job.filename()?,
-        )
-        .context("failed to snapshot content")?;
+        if let Ok(filename) = scraped.job.filename() {
+            scrape::snapshot_content(
+                &mut scraped.content,
+                &config.data_dir.join("listings"),
+                &filename,
+            )
+            .context("failed to snapshot content")?;
+        }
+
         app.write_new_document(config)?;
 
         println!("application created at {}", app.filename());

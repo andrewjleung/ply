@@ -3,12 +3,14 @@ use clap::{Parser, Subcommand};
 
 use crate::{
     command::{
-        config::Config, data_directory::DataDirectory, generate::Generate, no::No, to::To, yes::Yes,
+        config::Config, cycles::Cycles, data_directory::DataDirectory, generate::Generate, no::No,
+        to::To, yes::Yes,
     },
     config::PlyConfig,
 };
 
 mod config;
+mod cycles;
 mod data_directory;
 mod generate;
 mod no;
@@ -34,6 +36,9 @@ pub enum Command {
     /// Fetch the config path
     Config(Config),
 
+    /// Fetch all cycles with applications
+    Cycles(Cycles),
+
     /// Generate completions for this CLI
     Generate(Generate),
 
@@ -55,6 +60,7 @@ impl Run for Ply {
     fn run(&self, config: &PlyConfig) -> Result<()> {
         match &self.command {
             Command::Config(cmd) => cmd.run(config),
+            Command::Cycles(cmd) => cmd.run(config),
             Command::DataDirectory(cmd) => cmd.run(config),
             Command::Generate(cmd) => cmd.run(config),
             Command::No(cmd) => cmd.run(config),

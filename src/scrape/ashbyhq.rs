@@ -144,7 +144,8 @@ impl JobScraper for LocalFileScraper {
             "failed to read hiringcafe listing at {}",
             path.to_string_lossy()
         ))?;
-        let job_posting_data_selector = Selector::parse("head > script:nth-child(19)").unwrap();
+        let job_posting_data_selector =
+            Selector::parse(r#"script[type="application/ld+json"]"#).unwrap();
         let document = Html::parse_document(&html);
         let job_posting_data = document
             .select(&job_posting_data_selector)
