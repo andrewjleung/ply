@@ -17,12 +17,13 @@ pub struct To {
     /// The URL of the job listing
     pub url: String,
 
-    #[arg(value_enum)]
     /// The scraper to use, this will be inferred when the given URL scheme is 'https' and required
     /// if it is 'file'
+    #[arg(value_enum, long, short)]
     pub scraper: Option<JobScraperKind>,
 
     // The job application cycle for this application
+    #[arg(long, short)]
     pub cycle: Option<String>,
 }
 

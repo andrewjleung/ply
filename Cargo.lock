@@ -989,6 +989,7 @@ dependencies = [
  "dirs",
  "hex",
  "htmd",
+ "html-escape",
  "regex",
  "scraper",
  "serde",

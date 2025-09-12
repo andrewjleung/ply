@@ -12,6 +12,7 @@ use url::Url;
 use crate::job::Job;
 
 pub mod ashbyhq;
+pub mod greenhouse;
 pub mod hiring_cafe;
 
 pub struct ScrapedContent {
@@ -25,19 +26,27 @@ pub trait JobScraper {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum JobScraperKind {
+    Greenhouse,
     HiringCafe,
     AshbyHQ,
 }
 
 impl JobScraper for JobScraperKind {
+    // TODO: this API is weird... why do we need to supply URL twice?
     fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
         match self {
+            JobScraperKind::Greenhouse => greenhouse::new(url)
+                .context("failed to create greenhouse scraper")?
+                .scrape(url)
+                .context("failed to scrape with greenhouse scraper"),
             JobScraperKind::HiringCafe => hiring_cafe::new(url)
                 .context("failed to create hiring cafe scraper")?
-                .scrape(url),
+                .scrape(url)
+                .context("failed to scrape with hiring cafe scraper"),
             JobScraperKind::AshbyHQ => ashbyhq::new(url)
                 .context("failed to create ashbyhq scraper")?
-                .scrape(url),
+                .scrape(url)
+                .context("failed to scrape with ashbyhq scraper"),
         }
     }
 }
@@ -92,6 +101,7 @@ fn infer_scraper_kind(
         ("https", None) => match url.domain() {
             Some("hiring.cafe") => JobScraperKind::HiringCafe,
             Some("jobs.ashbyhq.com") => JobScraperKind::AshbyHQ,
+            Some("job-boards.greenhouse.io") => JobScraperKind::Greenhouse,
             Some(domain) => {
                 return Err(anyhow!(
                     "could not infer scraper kind from unrecognized HTTPS domain {domain}"
@@ -117,10 +127,5 @@ fn infer_scraper_kind(
 
 pub fn scrape(url: &Url, scraper_kind: Option<JobScraperKind>) -> Result<ScrapedContent> {
     let (url, scraper_kind) = infer_scraper_kind(url.to_owned(), scraper_kind)?;
-
-    match scraper_kind {
-        // TODO: this API is weird... why do we need to supply URL twice?
-        JobScraperKind::HiringCafe => hiring_cafe::new(&url)?.scrape(&url),
-        JobScraperKind::AshbyHQ => ashbyhq::new(&url)?.scrape(&url),
-    }
+    scraper_kind.scrape(&url)
 }
