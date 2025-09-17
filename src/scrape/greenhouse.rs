@@ -44,6 +44,10 @@ fn parse_company_title_and_team(document: &Html) -> Result<(String, String, Opti
         r"^Job Application for (?P<title>[^-()]+) - (?P<team>[^();\r\n]+)(?:\s*\([^)]*\))? +at +(?P<company>.+)$"
     ).unwrap();
 
+    let comma_re = Regex::new(
+        r"^Job Application for (?P<title>[^-()]+), (?P<team>[^();\r\n]+)(?:\s*\([^)]*\))? +at +(?P<company>.+)$"
+    ).unwrap();
+
     let paren_re = Regex::new(
         r"^Job Application for (?P<title>[^()]+) \((?P<team>[^;()]+)(?:;[^)]*)?\) +at +(?P<company>.+)$"
     ).unwrap();
@@ -52,6 +56,13 @@ fn parse_company_title_and_team(document: &Html) -> Result<(String, String, Opti
         Regex::new(r"^Job Application for (?P<title>.+) +at +(?P<company>.+)$").unwrap();
 
     if let Some(caps) = dash_re.captures(&document_title) {
+        let title = caps.name("title").unwrap().as_str().trim().to_string();
+        let team = caps.name("team").map(|m| m.as_str().trim().to_string());
+        let company = caps.name("company").unwrap().as_str().trim().to_string();
+        return Ok((company, title, team));
+    }
+
+    if let Some(caps) = comma_re.captures(&document_title) {
         let title = caps.name("title").unwrap().as_str().trim().to_string();
         let team = caps.name("team").map(|m| m.as_str().trim().to_string());
         let company = caps.name("company").unwrap().as_str().trim().to_string();
