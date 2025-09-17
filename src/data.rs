@@ -14,6 +14,7 @@ pub fn normalize_filename_attr(name: &str) -> String {
         .replace(".", "")
         .replace("(", "")
         .replace(")", "")
+        .replace("/", "_")
 }
 
 pub fn ensure_directory(dir: &Path) -> Result<()> {
