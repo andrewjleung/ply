@@ -32,6 +32,17 @@ pub enum StageType {
     Behavioral,
     Negotiation,
     Rejected,
+    Accepted,
+}
+
+impl StageType {
+    pub fn is_terminal(&self) -> bool {
+        match self {
+            Self::Rejected => true,
+            Self::Accepted => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -67,6 +78,19 @@ impl Application {
 
         doc.write_new(&config.data_dir)
             .context("failed to write application")
+    }
+
+    pub fn current_stage(&self) -> Option<Stage> {
+        let mut stages = self.stages.clone();
+        stages.sort_by(|a, b| a.start_time.cmp(&b.start_time));
+        stages.last().cloned()
+    }
+
+    pub fn is_active(&self) -> bool {
+        match self.current_stage() {
+            Some(stage) => !stage.stage_type.is_terminal(),
+            None => true,
+        }
     }
 }
 

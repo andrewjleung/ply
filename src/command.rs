@@ -3,8 +3,8 @@ use clap::{Parser, Subcommand};
 
 use crate::{
     command::{
-        config::Config, cycles::Cycles, data_directory::DataDirectory, generate::Generate, no::No,
-        to::To, yes::Yes,
+        config::Config, cycles::Cycles, data_directory::DataDirectory, generate::Generate,
+        list::List, no::No, to::To, yes::Yes,
     },
     config::PlyConfig,
 };
@@ -13,6 +13,7 @@ mod config;
 mod cycles;
 mod data_directory;
 mod generate;
+mod list;
 mod no;
 mod to;
 mod yes;
@@ -42,6 +43,9 @@ pub enum Command {
     /// Generate completions for this CLI
     Generate(Generate),
 
+    /// List applications
+    List(List),
+
     /// Mark an application as rejected
     No(No),
 
@@ -63,6 +67,7 @@ impl Run for Ply {
             Command::Cycles(cmd) => cmd.run(config),
             Command::DataDirectory(cmd) => cmd.run(config),
             Command::Generate(cmd) => cmd.run(config),
+            Command::List(cmd) => cmd.run(config),
             Command::No(cmd) => cmd.run(config),
             Command::To(cmd) => cmd.run(config),
             Command::Yes(cmd) => cmd.run(config),
