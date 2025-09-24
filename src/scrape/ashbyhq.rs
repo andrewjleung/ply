@@ -119,7 +119,7 @@ impl JobScraper for HttpScraper {
 
         let company = parse_company(&job_posting_data)?;
         let (title, team) = parse_title_and_team(&job_posting_data)?;
-        let salary_range = parse_salary_range(&job_posting_data)?;
+        let salary_range = parse_salary_range(&job_posting_data).unwrap_or(None);
 
         Ok(ScrapedContent {
             job: Job {

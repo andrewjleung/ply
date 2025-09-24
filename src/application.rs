@@ -24,7 +24,7 @@ pub struct Application {
     pub stages: Vec<Stage>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize, Debug)]
 pub enum StageType {
     Applied,
     Screen,
@@ -37,7 +37,7 @@ pub enum StageType {
 
 impl StageType {
     pub fn is_terminal(&self) -> bool {
-        matches!(Self::Rejected, Self::Accepted)
+        matches!(self, Self::Rejected | Self::Accepted)
     }
 }
 

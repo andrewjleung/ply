@@ -43,7 +43,7 @@ pub enum Command {
     /// Generate completions for this CLI
     Generate(Generate),
 
-    /// List applications
+    /// List data about applications
     List(List),
 
     /// Mark an application as rejected
