@@ -37,11 +37,7 @@ pub enum StageType {
 
 impl StageType {
     pub fn is_terminal(&self) -> bool {
-        match self {
-            Self::Rejected => true,
-            Self::Accepted => true,
-            _ => false,
-        }
+        matches!(Self::Rejected, Self::Accepted)
     }
 }
 

@@ -50,7 +50,7 @@ fn parse_company(data: &Value) -> Result<String> {
                 "failed to parse key 'hiringOrganization.name' in job posting JSON data as string",
             )
         })
-        .map(|s| s.to_owned())
+        .map(|s| s.trim().to_owned())
 }
 
 fn parse_salary_range(data: &Value) -> Result<Option<SalaryRange>> {
