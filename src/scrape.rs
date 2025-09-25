@@ -14,6 +14,7 @@ use crate::job::Job;
 pub mod ashbyhq;
 pub mod greenhouse;
 pub mod hiring_cafe;
+pub mod meta;
 
 pub struct ScrapedContent {
     pub job: Job,
@@ -29,6 +30,7 @@ pub enum JobScraperKind {
     Greenhouse,
     HiringCafe,
     AshbyHQ,
+    Meta,
 }
 
 impl JobScraper for JobScraperKind {
@@ -47,6 +49,10 @@ impl JobScraper for JobScraperKind {
                 .context("failed to create ashbyhq scraper")?
                 .scrape(url)
                 .context("failed to scrape with ashbyhq scraper"),
+            JobScraperKind::Meta => meta::new(url)
+                .context("failed to create meta scraper")?
+                .scrape(url)
+                .context("failed to scrape with meta scraper"),
         }
     }
 }
@@ -102,6 +108,7 @@ fn infer_scraper_kind(
             Some("hiring.cafe") => JobScraperKind::HiringCafe,
             Some("jobs.ashbyhq.com") => JobScraperKind::AshbyHQ,
             Some("job-boards.greenhouse.io") => JobScraperKind::Greenhouse,
+            Some("www.metacareers.com") => JobScraperKind::Meta,
             Some(domain) => {
                 return Err(anyhow!(
                     "could not infer scraper kind from unrecognized HTTPS domain {domain}"

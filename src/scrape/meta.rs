@@ -12,15 +12,15 @@ use crate::{
 pub struct HttpScraper {}
 pub struct LocalFileScraper {}
 
-pub enum GreenhouseScraper {
+pub enum MetaScraper {
     Http(HttpScraper),
     LocalFile(LocalFileScraper),
 }
 
-pub fn new(url: &Url) -> Result<GreenhouseScraper> {
+pub fn new(url: &Url) -> Result<MetaScraper> {
     match url.scheme() {
-        "file" => Ok(GreenhouseScraper::LocalFile(LocalFileScraper {})),
-        "https" => Ok(GreenhouseScraper::Http(HttpScraper {})),
+        "file" => Ok(MetaScraper::LocalFile(LocalFileScraper {})),
+        "https" => Ok(MetaScraper::Http(HttpScraper {})),
         _ => Err(anyhow!(format!(
             "got unsupported URL scheme {}",
             url.scheme()
@@ -28,9 +28,9 @@ pub fn new(url: &Url) -> Result<GreenhouseScraper> {
     }
 }
 
-fn parse_company_title_and_team(document: &Html) -> Result<(String, String, Option<String>)> {
+fn parse_title_and_team(document: &Html) -> Result<(String, Option<String>)> {
     let document_title_selector =
-        Selector::parse("head > title").expect("failed to compile title selector");
+        Selector::parse("#pageTitle").expect("failed to compile title selector");
     let document_title = &document
         .select(&document_title_selector)
         .next()
@@ -39,74 +39,30 @@ fn parse_company_title_and_team(document: &Html) -> Result<(String, String, Opti
         .collect::<Vec<_>>()
         .join("");
     let document_title = html_escape::decode_html_entities(document_title);
+    let title_re = Regex::new(r"^(?P<title>[^,]+),\s*(?P<team>[^|]+)\s*\|").unwrap();
 
-    let dash_re = Regex::new(
-        r"^Job Application for (?P<title>[^-()]+) - (?P<team>[^();\r\n]+)(?:\s*\([^)]*\))? +at +(?P<company>.+)$"
-    ).unwrap();
-
-    let delim_re = Regex::new(
-        r"^Job Application for (?P<title>[^-()]+)[,:] (?P<team>[^();\r\n]+)(?:\s*\([^)]*\))? +at +(?P<company>.+)$"
-    ).unwrap();
-
-    let paren_re = Regex::new(
-        r"^Job Application for (?P<title>[^()]+) \((?P<team>[^;()]+)(?:;[^)]*)?\) +at +(?P<company>.+)$"
-    ).unwrap();
-
-    let no_team_re =
-        Regex::new(r"^Job Application for (?P<title>.+) +at +(?P<company>.+)$").unwrap();
-
-    let pipe_delim_re =
-        Regex::new(r"^(?P<title>.*?) (?:- (?P<team>.*?))(?: \([^)]*\))?\s*\| (?P<company>.*)$")
-            .unwrap();
-
-    if let Some(caps) = dash_re.captures(&document_title) {
+    if let Some(caps) = title_re.captures(&document_title) {
         let title = caps.name("title").unwrap().as_str().trim().to_string();
         let team = caps.name("team").map(|m| m.as_str().trim().to_string());
-        let company = caps.name("company").unwrap().as_str().trim().to_string();
-        return Ok((company, title, team));
-    }
-
-    if let Some(caps) = delim_re.captures(&document_title) {
-        let title = caps.name("title").unwrap().as_str().trim().to_string();
-        let team = caps.name("team").map(|m| m.as_str().trim().to_string());
-        let company = caps.name("company").unwrap().as_str().trim().to_string();
-        return Ok((company, title, team));
-    }
-
-    if let Some(caps) = paren_re.captures(&document_title) {
-        let title = caps.name("title").unwrap().as_str().trim().to_string();
-        let team = caps.name("team").map(|m| m.as_str().trim().to_string());
-        let company = caps.name("company").unwrap().as_str().trim().to_string();
-        return Ok((company, title, team));
-    }
-
-    if let Some(caps) = no_team_re.captures(&document_title) {
-        let title = caps.name("title").unwrap().as_str().trim().to_string();
-        let company = caps.name("company").unwrap().as_str().trim().to_string();
-        return Ok((company, title, None));
-    }
-
-    if let Some(caps) = pipe_delim_re.captures(&document_title) {
-        let title = caps.name("title").unwrap().as_str().trim().to_string();
-        let team = caps.name("team").map(|m| m.as_str().trim().to_string());
-        let company = caps.name("company").unwrap().as_str().trim().to_string();
-        return Ok((company, title, team));
+        return Ok((title, team));
     }
 
     Err(anyhow!("failed to match title {document_title}"))
 }
 
 fn parse_salary_range(html: &str) -> Result<Option<SalaryRange>> {
-    let salary_re = Regex::new(r"\$((?:\d+,\d{3})|(?:\d+k)).*\$((?:\d+,\d{3})|(?:\d+k))")
-        .expect("failed to compile salary range regex");
+    let salary_re = Regex::new(
+        r"\$\s*(?P<lower>\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*/hour\s*to\s*\$\s*(?P<upper>\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*/year"
+    ).expect("failed to compile salary range regex");
+
     let salary_range = salary_re
         // TODO: from string to html back to string... bad
         .captures_iter(html)
         .next()
         .map(|c| -> Result<SalaryRange> {
             let (_, [lower, upper]) = c.extract();
-            let lower = lower.replace(",", "").replace("k", "000").parse::<u32>()?;
-            let upper = upper.replace(",", "").replace("k", "000").parse::<u32>()?;
+            let lower: u32 = (lower.replace(",", "").parse::<f64>()? * 2080.0).round() as u32;
+            let upper: u32 = upper.replace(",", "").parse()?;
 
             if lower > upper {
                 return Err(Error::msg(format!(
@@ -128,11 +84,11 @@ fn parse_salary_range(html: &str) -> Result<Option<SalaryRange>> {
     })
 }
 
-impl JobScraper for GreenhouseScraper {
+impl JobScraper for MetaScraper {
     fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
         match self {
-            GreenhouseScraper::Http(scraper) => scraper.scrape(url),
-            GreenhouseScraper::LocalFile(scraper) => scraper.scrape(url),
+            MetaScraper::Http(scraper) => scraper.scrape(url),
+            MetaScraper::LocalFile(scraper) => scraper.scrape(url),
         }
     }
 }
@@ -146,14 +102,14 @@ impl JobScraper for HttpScraper {
             .context("failed to read scraped HTTP response to string")?;
 
         let document = Html::parse_document(&html);
-        let (company, title, team) = parse_company_title_and_team(&document)
-            .context("failed to parse company, title, and team")?;
+        let (title, team) =
+            parse_title_and_team(&document).context("failed to parse title and team")?;
         let salary_range = parse_salary_range(&html).context("failed to parse salary range")?;
 
         Ok(ScrapedContent {
             job: Job {
                 listing_url: Some(url.to_owned()),
-                company,
+                company: "Meta".to_string(),
                 title: title.to_owned(),
                 team: team.to_owned(),
                 salary_range,
@@ -174,14 +130,14 @@ impl JobScraper for LocalFileScraper {
             path.to_string_lossy()
         ))?;
         let document = Html::parse_document(&html);
-        let (company, title, team) = parse_company_title_and_team(&document)
-            .context("failed to parse company, title, and team")?;
+        let (title, team) =
+            parse_title_and_team(&document).context("failed to parse title and team")?;
         let salary_range = parse_salary_range(&html).context("failed to parse salary range")?;
 
         Ok(ScrapedContent {
             job: Job {
                 listing_url: Some(url.to_owned()),
-                company,
+                company: "Meta".to_string(),
                 title: title.to_owned(),
                 team: team.to_owned(),
                 salary_range,
