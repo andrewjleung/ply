@@ -27,6 +27,7 @@ pub struct Application {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize, Debug)]
 pub enum StageType {
     Applied,
+    Recruiter,
     Screen,
     Technical,
     Behavioral,
@@ -85,6 +86,15 @@ impl Application {
     pub fn is_active(&self) -> bool {
         match self.current_stage() {
             Some(stage) => !stage.stage_type.is_terminal(),
+            None => true,
+        }
+    }
+
+    pub fn is_interviewing(&self) -> bool {
+        match self.current_stage() {
+            Some(stage) => {
+                !stage.stage_type.is_terminal() && !matches!(stage.stage_type, StageType::Applied)
+            }
             None => true,
         }
     }

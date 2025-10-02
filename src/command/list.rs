@@ -22,9 +22,13 @@ pub enum ListCommand {
 
 #[derive(Args)]
 pub struct Applications {
-    /// Only list applications that are not terminal, i.e. accepted or rejected
+    /// Only list applications that are not in a terminal state like accepted or rejected
     #[arg(short, long)]
     active: bool,
+
+    /// Only list applications that are past the initial 'Applied' stage and not in a terminal state like accepted or rejected
+    #[arg(short, long)]
+    interviewing: bool,
 }
 
 #[derive(Args)]
@@ -45,9 +49,15 @@ impl Run for Applications {
                 let doc = document::read::<Application>(path)
                     .context(format!("failed to read application at {}", path))?;
 
-                if !self.active || doc.record.is_active() {
-                    println!("{}", entry.path().to_string_lossy())
+                if self.active && !doc.record.is_active() {
+                    continue;
                 }
+
+                if self.interviewing && !doc.record.is_interviewing() {
+                    continue;
+                }
+
+                println!("{}", entry.path().to_string_lossy())
             }
         }
 
