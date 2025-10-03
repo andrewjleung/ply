@@ -12,15 +12,15 @@ use crate::{
 pub struct HttpScraper {}
 pub struct LocalFileScraper {}
 
-pub enum MetaScraper {
+pub enum GoogleScraper {
     Http(HttpScraper),
     LocalFile(LocalFileScraper),
 }
 
-pub fn new(url: &Url) -> Result<MetaScraper> {
+pub fn new(url: &Url) -> Result<GoogleScraper> {
     match url.scheme() {
-        "file" => Ok(MetaScraper::LocalFile(LocalFileScraper {})),
-        "https" => Ok(MetaScraper::Http(HttpScraper {})),
+        "file" => Ok(GoogleScraper::LocalFile(LocalFileScraper {})),
+        "https" => Ok(GoogleScraper::Http(HttpScraper {})),
         _ => Err(anyhow!(format!(
             "got unsupported URL scheme {}",
             url.scheme()
@@ -30,7 +30,7 @@ pub fn new(url: &Url) -> Result<MetaScraper> {
 
 fn parse_title_and_team(document: &Html) -> Result<(String, Option<String>)> {
     let document_title_selector =
-        Selector::parse("#pageTitle").expect("failed to compile title selector");
+        Selector::parse("head > title").expect("failed to compile title selector");
     let document_title = &document
         .select(&document_title_selector)
         .next()
@@ -39,7 +39,7 @@ fn parse_title_and_team(document: &Html) -> Result<(String, Option<String>)> {
         .collect::<Vec<_>>()
         .join("");
     let document_title = html_escape::decode_html_entities(document_title);
-    let title_re = Regex::new(r"^(?P<title>[^,]+),\s*(?P<team>[^|]+)\s*\|").unwrap();
+    let title_re = Regex::new(r"^(?P<title>.*), (?P<team>.*) — Google Careers$").unwrap();
 
     if let Some(caps) = title_re.captures(&document_title) {
         let title = caps.name("title").unwrap().as_str().trim().to_string();
@@ -51,9 +51,9 @@ fn parse_title_and_team(document: &Html) -> Result<(String, Option<String>)> {
 }
 
 fn parse_salary_range(html: &str) -> Result<Option<SalaryRange>> {
-    let salary_re = Regex::new(
-        r"\$\s*(?P<lower>\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*/hour\s*to\s*\$\s*(?P<upper>\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*/year"
-    ).expect("failed to compile salary range regex");
+    let salary_re =
+        Regex::new(r"\$\s*(?P<lower>\d{1,3},\d{3})\s*-\s*\$\s*(?P<upper>\d{1,3},\d{3})")
+            .expect("failed to compile salary range regex");
 
     let salary_range = salary_re
         // TODO: from string to html back to string... bad
@@ -61,7 +61,7 @@ fn parse_salary_range(html: &str) -> Result<Option<SalaryRange>> {
         .next()
         .map(|c| -> Result<SalaryRange> {
             let (_, [lower, upper]) = c.extract();
-            let lower: u32 = (lower.replace(",", "").parse::<f64>()? * 2080.0).round() as u32;
+            let lower: u32 = lower.replace(",", "").parse()?;
             let upper: u32 = upper.replace(",", "").parse()?;
 
             if lower > upper {
@@ -84,11 +84,11 @@ fn parse_salary_range(html: &str) -> Result<Option<SalaryRange>> {
     })
 }
 
-impl JobScraper for MetaScraper {
+impl JobScraper for GoogleScraper {
     fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
         match self {
-            MetaScraper::Http(scraper) => scraper.scrape(url),
-            MetaScraper::LocalFile(scraper) => scraper.scrape(url),
+            GoogleScraper::Http(scraper) => scraper.scrape(url),
+            GoogleScraper::LocalFile(scraper) => scraper.scrape(url),
         }
     }
 }
@@ -109,7 +109,7 @@ impl JobScraper for HttpScraper {
         Ok(ScrapedContent {
             job: Job {
                 listing_url: Some(url.to_owned()),
-                company: "Meta".to_string(),
+                company: "Google".to_string(),
                 title: title.to_owned(),
                 team: team.to_owned(),
                 salary_range,
@@ -126,7 +126,7 @@ impl JobScraper for LocalFileScraper {
             .map_err(|()| Error::msg("failed to convert local URL scrape target to file path"))?;
 
         let html = read_to_string(&path).context(format!(
-            "failed to read meta listing at {}",
+            "failed to read google listing at {}",
             path.to_string_lossy()
         ))?;
         let document = Html::parse_document(&html);
@@ -137,7 +137,7 @@ impl JobScraper for LocalFileScraper {
         Ok(ScrapedContent {
             job: Job {
                 listing_url: Some(url.to_owned()),
-                company: "Meta".to_string(),
+                company: "Google".to_string(),
                 title: title.to_owned(),
                 team: team.to_owned(),
                 salary_range,
