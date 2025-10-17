@@ -6,6 +6,7 @@ use url::Url;
 
 use crate::{
     job::{Job, SalaryRange},
+    parse::Parse,
     scrape::{JobScraper, ScrapedContent},
 };
 
@@ -96,38 +97,6 @@ fn parse_company_title_and_team(document: &Html) -> Result<(String, String, Opti
     Err(anyhow!("failed to match title {document_title}"))
 }
 
-fn parse_salary_range(html: &str) -> Result<Option<SalaryRange>> {
-    let salary_re = Regex::new(r"\$((?:\d+,\d{3})|(?:\d+k)).*\$((?:\d+,\d{3})|(?:\d+k))")
-        .expect("failed to compile salary range regex");
-    let salary_range = salary_re
-        // TODO: from string to html back to string... bad
-        .captures_iter(html)
-        .next()
-        .map(|c| -> Result<SalaryRange> {
-            let (_, [lower, upper]) = c.extract();
-            let lower = lower.replace(",", "").replace("k", "000").parse::<u32>()?;
-            let upper = upper.replace(",", "").replace("k", "000").parse::<u32>()?;
-
-            if lower > upper {
-                return Err(Error::msg(format!(
-                    "lower bound {} is greater than upper bound {}",
-                    lower, upper
-                )));
-            }
-
-            Ok(SalaryRange {
-                lower,
-                range: Some(upper.abs_diff(lower)),
-            })
-        });
-
-    Ok(match salary_range {
-        Some(Ok(range)) => Some(range),
-        Some(Err(error)) => return Err(error),
-        None => None,
-    })
-}
-
 impl JobScraper for GreenhouseScraper {
     fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
         match self {
@@ -148,7 +117,7 @@ impl JobScraper for HttpScraper {
         let document = Html::parse_document(&html);
         let (company, title, team) = parse_company_title_and_team(&document)
             .context("failed to parse company, title, and team")?;
-        let salary_range = parse_salary_range(&html).context("failed to parse salary range")?;
+        let salary_range = SalaryRange::parse(&html)?;
 
         Ok(ScrapedContent {
             job: Job {
@@ -176,7 +145,7 @@ impl JobScraper for LocalFileScraper {
         let document = Html::parse_document(&html);
         let (company, title, team) = parse_company_title_and_team(&document)
             .context("failed to parse company, title, and team")?;
-        let salary_range = parse_salary_range(&html).context("failed to parse salary range")?;
+        let salary_range = SalaryRange::parse(&html)?;
 
         Ok(ScrapedContent {
             job: Job {

@@ -17,6 +17,7 @@ pub mod greenhouse;
 pub mod hiring_cafe;
 pub mod html;
 pub mod meta;
+pub mod netflix;
 
 pub struct ScrapedContent {
     pub job: Job,
@@ -34,6 +35,7 @@ pub enum JobScraperKind {
     AshbyHQ,
     Meta,
     Google,
+    Netflix,
 }
 
 impl JobScraper for JobScraperKind {
@@ -60,6 +62,10 @@ impl JobScraper for JobScraperKind {
                 .context("failed to create google scraper")?
                 .scrape(url)
                 .context("failed to scrape with google scraper"),
+            JobScraperKind::Netflix => netflix::new(url)
+                .context("failed to create netflix scraper")?
+                .scrape(url)
+                .context("failed to scrape with netflix scraper"),
         }
     }
 }
@@ -117,6 +123,7 @@ fn infer_scraper_kind(
             Some("job-boards.greenhouse.io") => JobScraperKind::Greenhouse,
             Some("www.metacareers.com") => JobScraperKind::Meta,
             Some("www.google.com") => JobScraperKind::Google,
+            Some("explore.jobs.netflix.net") => JobScraperKind::Netflix,
             Some(domain) => {
                 return Err(anyhow!(
                     "could not infer scraper kind from unrecognized HTTPS domain {domain}"

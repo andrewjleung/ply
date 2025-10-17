@@ -1,11 +1,11 @@
 use anyhow::{Context, Error, Result, anyhow};
-use regex::Regex;
 use scraper::{Html, Selector};
 use std::{fs::read_to_string, ops::Not};
 use url::Url;
 
 use crate::{
     job::{Job, SalaryRange},
+    parse::Parse,
     scrape::{JobScraper, ScrapedContent},
 };
 
@@ -70,33 +70,7 @@ fn parse_salary_range(document: &Html) -> Result<Option<SalaryRange>> {
         .collect::<Vec<_>>()
         .join("");
 
-    let salary_re = Regex::new(r"\$(\d+)k-\$(\d+)k\/yr").unwrap();
-    let salary_range = salary_re
-        .captures_iter(&salary)
-        .next()
-        .map(|c| -> Result<SalaryRange> {
-            let (_, [lower, upper]) = c.extract();
-            let lower = lower.parse::<u32>()? * 1000;
-            let upper = upper.parse::<u32>()? * 1000;
-
-            if lower > upper {
-                return Err(Error::msg(format!(
-                    "failed to parse salary range, lower bound {} is greater than upper bound {}",
-                    lower, upper
-                )));
-            }
-
-            Ok(SalaryRange {
-                lower,
-                range: Some(upper.abs_diff(lower)),
-            })
-        });
-
-    Ok(match salary_range {
-        Some(Ok(range)) => Some(range),
-        Some(Err(error)) => return Err(error),
-        None => None,
-    })
+    SalaryRange::parse(&salary)
 }
 
 impl JobScraper for HiringCafeScraper {

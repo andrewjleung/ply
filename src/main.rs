@@ -7,6 +7,7 @@ mod config;
 mod data;
 mod document;
 mod job;
+mod parse;
 mod scrape;
 
 fn main() -> Result<()> {

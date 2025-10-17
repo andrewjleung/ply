@@ -4,17 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::data::id_filename;
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct SalaryRange {
-    pub lower: u32,
-    pub range: Option<u32>,
-}
-
-impl SalaryRange {
-    pub fn upper(&self) -> Option<u32> {
-        self.range.map(|r| self.lower + r)
-    }
-}
+pub mod salary;
+pub use salary::SalaryRange;
 
 #[derive(Builder, Serialize, Deserialize, Clone)]
 pub struct Job {

@@ -6,22 +6,22 @@ use url::Url;
 
 use crate::{
     job::{Job, SalaryRange},
-    parse::salary::parse_yearly_bound,
+    parse::Parse,
     scrape::{JobScraper, ScrapedContent},
 };
 
 pub struct HttpScraper {}
 pub struct LocalFileScraper {}
 
-pub enum AshbyHqScraper {
+pub enum NetflixScraper {
     Http(HttpScraper),
     LocalFile(LocalFileScraper),
 }
 
-pub fn new(url: &Url) -> Result<AshbyHqScraper> {
+pub fn new(url: &Url) -> Result<NetflixScraper> {
     match url.scheme() {
-        "file" => Ok(AshbyHqScraper::LocalFile(LocalFileScraper {})),
-        "https" => Ok(AshbyHqScraper::Http(HttpScraper {})),
+        "file" => Ok(NetflixScraper::LocalFile(LocalFileScraper {})),
+        "https" => Ok(NetflixScraper::Http(HttpScraper {})),
         _ => Err(anyhow!(format!(
             "got unsupported URL scheme {}",
             url.scheme()
@@ -30,16 +30,19 @@ pub fn new(url: &Url) -> Result<AshbyHqScraper> {
 }
 
 fn parse_title_and_team(data: &Value) -> Result<(String, Option<String>)> {
-    let title_and_team = data["title"].as_str().ok_or_else(|| {
-        Error::msg("failed to parse key 'title' in job posting JSON data as string")
-    })?;
+    let title_and_team = data["title"]
+        .as_str()
+        .map(html_escape::decode_html_entities)
+        .ok_or_else(|| {
+            Error::msg("failed to parse key 'title' in job posting JSON data as string")
+        })?;
 
     Ok(match title_and_team.split_once(", ") {
         Some((title, team)) => (
             title.to_owned(),
             team.is_empty().not().then_some(team).map(|t| t.to_owned()),
         ),
-        None => (title_and_team.to_owned(), None),
+        None => (title_and_team.to_string(), None),
     })
 }
 
@@ -55,38 +58,23 @@ fn parse_company(data: &Value) -> Result<String> {
 }
 
 fn parse_salary_range(data: &Value) -> Result<Option<SalaryRange>> {
-    let unit = data["baseSalary"]["value"]["unitText"]
+    let description = data["description"]
         .as_str()
+        .map(html_escape::decode_html_entities)
         .ok_or_else(|| {
             Error::msg(
                 "failed to parse key 'baseSalary.value.unitText' in job posting JSON data as string",
             )
         })?;
 
-    if unit != "YEAR" {
-        return Err(anyhow!("salary range unit is not yearly, got {unit}"));
-    }
-
-    let lower = data["baseSalary"]["value"]["minValue"]
-        .as_str()
-        .map(|v| parse_yearly_bound(v, "year"))
-        .transpose()
-        .context("failed to parse lower bound")?;
-
-    let upper = data["baseSalary"]["value"]["maxValue"]
-        .as_str()
-        .map(|v| parse_yearly_bound(v, "year"))
-        .transpose()
-        .context("failed to parse upper bound")?;
-
-    SalaryRange::try_from_maybe_bounds(lower, upper)
+    SalaryRange::parse(&description)
 }
 
-impl JobScraper for AshbyHqScraper {
+impl JobScraper for NetflixScraper {
     fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
         match self {
-            AshbyHqScraper::Http(scraper) => scraper.scrape(url),
-            AshbyHqScraper::LocalFile(scraper) => scraper.scrape(url),
+            NetflixScraper::Http(scraper) => scraper.scrape(url),
+            NetflixScraper::LocalFile(scraper) => scraper.scrape(url),
         }
     }
 }
