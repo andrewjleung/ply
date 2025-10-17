@@ -38,6 +38,10 @@ pub struct To {
     // The job application cycle for this application
     #[arg(long, short)]
     pub cycle: Option<String>,
+
+    // Print the application to STDOUT instead of writing it
+    #[arg(long, short)]
+    pub print: bool,
 }
 
 impl Run for To {
@@ -65,9 +69,12 @@ impl Run for To {
                     .context("failed to snapshot content")?;
                 }
 
-                app.write_new_document(config)?;
-
-                println!("application created at {}", app.filename());
+                if self.print {
+                    println!("{}", app.new_document().new_content()?);
+                } else {
+                    app.write_new_document(config)?;
+                    println!("application created at {}", app.filename());
+                }
 
                 Ok(())
             }
@@ -82,7 +89,12 @@ impl Run for To {
 
                 let app = application::new(job, self.cycle.clone());
 
-                app.write_new_document(config)?;
+                if self.print {
+                    println!("{}", app.new_document().new_content()?);
+                } else {
+                    app.write_new_document(config)?;
+                    println!("application created at {}", app.filename());
+                }
 
                 println!("application created at {}", app.filename());
 

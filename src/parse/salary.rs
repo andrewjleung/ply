@@ -12,13 +12,13 @@ impl Parse<()> for SalaryRange {
     {
         let re = Regex::new(
             r#"(?xi)
-        \$ (?P<lower>\d+(?:,\d{3})?(?:\.\d+)?k?)
-        (?: / (?P<lower_unit>hr|hour|year))?
-        (?:
-        (?:to|-)
-        \$ (?P<upper>\d+(?:,\d{3})?(?:\.\d+)?k?)
-        (?: / (?P<upper_unit>hr|hour|year))?
-        )?
+            \$ \s* (?P<lower>\d+(?:,\d{3})?(?:\.\d+)?k?)
+            (?: \s* \/ \s* (?P<lower_unit>hr|hour|year))?
+            (?:
+            \s* (?:to|-) \s*
+            \$ \s* (?P<upper>\d+(?:,\d{3})?(?:\.\d+)?k?)
+            (?: \s* \/ \s* (?P<upper_unit>hr|hour|year))?
+            )?
 "#,
         )
         .expect("failed to compile salary range regex");

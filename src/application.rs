@@ -67,13 +67,16 @@ pub fn new(job: Job, cycle: Option<String>) -> Application {
 }
 
 impl Application {
-    pub fn write_new_document(&self, config: &PlyConfig) -> Result<File> {
-        let doc: Document<Application> = Document {
+    pub fn new_document(&self) -> Document<Application> {
+        Document {
             record: self.to_owned(),
             content: None,
-        };
+        }
+    }
 
-        doc.write_new(&config.data_dir)
+    pub fn write_new_document(&self, config: &PlyConfig) -> Result<File> {
+        self.new_document()
+            .write_new(&config.data_dir)
             .context("failed to write application")
     }
 

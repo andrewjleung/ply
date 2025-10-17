@@ -71,7 +71,13 @@ impl JobScraper for HttpScraper {
         let document = Html::parse_document(&html);
         let (title, team) =
             parse_title_and_team(&document).context("failed to parse title and team")?;
-        let salary_range = SalaryRange::parse(&html)?;
+
+        let salary_range = Regex::new(r">\$.*to.*\$.*bonus \+ equity \+ benefits")
+            .unwrap()
+            .captures(&html)
+            .and_then(|captures| captures.iter().next().flatten())
+            .and_then(|line| SalaryRange::parse(line.as_str()).transpose())
+            .transpose()?;
 
         Ok(ScrapedContent {
             job: Job {
@@ -99,7 +105,12 @@ impl JobScraper for LocalFileScraper {
         let document = Html::parse_document(&html);
         let (title, team) =
             parse_title_and_team(&document).context("failed to parse title and team")?;
-        let salary_range = SalaryRange::parse(&html)?;
+        let salary_range = Regex::new(r"\$.*to.*\$.*bonus \+ equity \+ benefits")
+            .unwrap()
+            .captures(&html)
+            .and_then(|captures| captures.iter().next().flatten())
+            .and_then(|line| SalaryRange::parse(line.as_str()).transpose())
+            .transpose()?;
 
         Ok(ScrapedContent {
             job: Job {

@@ -65,6 +65,17 @@ where
 impl<Documentable: Serialize + DeserializeOwned + Filename + Clone + PreDocument>
     Document<Documentable>
 {
+    pub fn new_content(&self) -> Result<String> {
+        let record = self.record.pre_document();
+        let frontmatter =
+            toml::to_string(&record).context("failed to serialize frontmatter for document")?;
+
+        Ok(format!(
+            "---\n{frontmatter}---\n{}",
+            self.content.clone().unwrap_or("".to_owned())
+        ))
+    }
+
     pub fn write_new(&self, dir: &Path) -> Result<File> {
         ensure_directory(dir)?;
 
@@ -72,16 +83,7 @@ impl<Documentable: Serialize + DeserializeOwned + Filename + Clone + PreDocument
         let mut f = File::create_new(dir.join(filename))
             .context(format!("failed to create document at {}", dir.as_str()))?;
 
-        let record = self.record.pre_document();
-        let frontmatter =
-            toml::to_string(&record).context("failed to serialize frontmatter for document")?;
-
-        let content = format!(
-            "---\n{frontmatter}---\n{}",
-            self.content.clone().unwrap_or("".to_owned())
-        );
-
-        f.write_all(content.as_bytes())
+        f.write_all(self.new_content()?.as_bytes())
             .context("failed to write document")?;
 
         Ok(f)
