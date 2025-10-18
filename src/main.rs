@@ -6,7 +6,9 @@ mod command;
 mod config;
 mod data;
 mod document;
+mod fetch;
 mod job;
+mod job_listing;
 mod parse;
 mod scrape;
 

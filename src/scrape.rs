@@ -9,14 +9,15 @@ use std::{
 };
 use url::Url;
 
+use crate::fetch::{Fetch, Source};
 use crate::job::Job;
+use crate::job_listing::JobListing;
+use crate::parse::Parse;
 
 pub mod ashbyhq;
 pub mod google;
-pub mod greenhouse;
 pub mod hiring_cafe;
 pub mod html;
-pub mod meta;
 pub mod netflix;
 
 pub struct ScrapedContent {
@@ -30,10 +31,8 @@ pub trait JobScraper {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum JobScraperKind {
-    Greenhouse,
     HiringCafe,
     AshbyHQ,
-    Meta,
     Google,
     Netflix,
 }
@@ -42,10 +41,6 @@ impl JobScraper for JobScraperKind {
     // TODO: this API is weird... why do we need to supply URL twice?
     fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
         match self {
-            JobScraperKind::Greenhouse => greenhouse::new(url)
-                .context("failed to create greenhouse scraper")?
-                .scrape(url)
-                .context("failed to scrape with greenhouse scraper"),
             JobScraperKind::HiringCafe => hiring_cafe::new(url)
                 .context("failed to create hiring cafe scraper")?
                 .scrape(url)
@@ -54,10 +49,6 @@ impl JobScraper for JobScraperKind {
                 .context("failed to create ashbyhq scraper")?
                 .scrape(url)
                 .context("failed to scrape with ashbyhq scraper"),
-            JobScraperKind::Meta => meta::new(url)
-                .context("failed to create meta scraper")?
-                .scrape(url)
-                .context("failed to scrape with meta scraper"),
             JobScraperKind::Google => google::new(url)
                 .context("failed to create google scraper")?
                 .scrape(url)
@@ -120,8 +111,6 @@ fn infer_scraper_kind(
         ("https", None) => match url.domain() {
             Some("hiring.cafe") => JobScraperKind::HiringCafe,
             Some("jobs.ashbyhq.com") => JobScraperKind::AshbyHQ,
-            Some("job-boards.greenhouse.io") => JobScraperKind::Greenhouse,
-            Some("www.metacareers.com") => JobScraperKind::Meta,
             Some("www.google.com") => JobScraperKind::Google,
             Some("explore.jobs.netflix.net") => JobScraperKind::Netflix,
             Some(domain) => {
@@ -145,6 +134,20 @@ fn infer_scraper_kind(
     };
 
     Ok((url, scraper_kind))
+}
+
+pub fn scrape_job_listing(source: Source, listing: JobListing) -> Result<ScrapedContent> {
+    let content = source.fetch()?;
+    let job = Job::parse_with_config(&content, &listing)
+        .transpose()
+        .ok_or(anyhow!("no job was parsed for job listing {:?}", &listing))
+        .context(format!(
+            "failed to parse job for job listing {:?}",
+            &listing
+        ))
+        .flatten()?;
+
+    Ok(ScrapedContent { job, content })
 }
 
 pub fn scrape(url: &Url, scraper_kind: Option<JobScraperKind>) -> Result<ScrapedContent> {

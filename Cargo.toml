@@ -24,3 +24,4 @@ toml = { version = "0.9", features = ["serde"] }
 tu = "0.4"
 ureq = "3.1"
 url = { version = "2.5", features = ["serde"] }
+rand = "0.9.2"

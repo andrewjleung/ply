@@ -8,8 +8,10 @@ use crate::{
     command::Run,
     config,
     document::Filename,
+    fetch::Source,
     job,
-    scrape::{self, JobScraperKind, scrape},
+    job_listing::JobListing,
+    scrape::{self, JobScraperKind, scrape, scrape_job_listing},
 };
 use url::Url;
 
@@ -42,6 +44,10 @@ pub struct To {
     // Print the application to STDOUT instead of writing it
     #[arg(long, short)]
     pub print: bool,
+
+    // Opt into experimental refactoring away from scrapers
+    #[arg(long, short)]
+    pub use_job_listings_feature: bool,
 }
 
 impl Run for To {
@@ -49,7 +55,17 @@ impl Run for To {
         match &self.url {
             Some(url) => {
                 let url = Url::parse(url).context("failed to parse given URL")?;
-                let mut scraped = scrape(&url, self.scraper).context("failed to scrape URL")?;
+
+                let mut scraped = if self.use_job_listings_feature
+                    && let Some(listing) = JobListing::infer(&url)
+                    && let Ok(source) = Source::try_from(&url)
+                {
+                    scrape_job_listing(source, listing)
+                        .context("[experimental] failed to scrape job listing")?
+                } else {
+                    scrape(&url, self.scraper).context("failed to scrape URL")?
+                };
+
                 let app = application::new(
                     scraped.job.to_owned(),
                     self.cycle
