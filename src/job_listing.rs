@@ -2,16 +2,17 @@ use url::Url;
 
 use crate::{
     job::Job,
-    job_listing::{greenhouse::Greenhouse, meta::Meta},
+    job_listing::{ashby::Ashby, greenhouse::Greenhouse, meta::Meta},
     parse::Parse,
 };
 
+pub mod ashby;
 pub mod greenhouse;
 pub mod meta;
 
 #[derive(Default, Debug)]
 pub enum JobListing {
-    AshbyHQ,
+    Ashby(Ashby),
     Google,
     Greenhouse(Greenhouse),
     HiringCafe,
@@ -30,7 +31,9 @@ impl JobListing {
 
         url.domain().map(|domain| match domain {
             // "hiring.cafe" => JobListing::HiringCafe,
-            // "jobs.ashbyhq.com" => JobListing::AshbyHQ,
+            "jobs.ashbyhq.com" => JobListing::Ashby(Ashby {
+                url: Some(url.to_owned()),
+            }),
             "job-boards.greenhouse.io" => JobListing::Greenhouse(Greenhouse {
                 url: Some(url.to_owned()),
             }),

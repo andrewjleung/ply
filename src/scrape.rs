@@ -14,7 +14,6 @@ use crate::job::Job;
 use crate::job_listing::JobListing;
 use crate::parse::Parse;
 
-pub mod ashbyhq;
 pub mod google;
 pub mod hiring_cafe;
 pub mod html;
@@ -32,7 +31,6 @@ pub trait JobScraper {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum JobScraperKind {
     HiringCafe,
-    AshbyHQ,
     Google,
     Netflix,
 }
@@ -45,10 +43,6 @@ impl JobScraper for JobScraperKind {
                 .context("failed to create hiring cafe scraper")?
                 .scrape(url)
                 .context("failed to scrape with hiring cafe scraper"),
-            JobScraperKind::AshbyHQ => ashbyhq::new(url)
-                .context("failed to create ashbyhq scraper")?
-                .scrape(url)
-                .context("failed to scrape with ashbyhq scraper"),
             JobScraperKind::Google => google::new(url)
                 .context("failed to create google scraper")?
                 .scrape(url)
@@ -110,7 +104,6 @@ fn infer_scraper_kind(
     let scraper_kind = match (url.scheme(), scraper_kind) {
         ("https", None) => match url.domain() {
             Some("hiring.cafe") => JobScraperKind::HiringCafe,
-            Some("jobs.ashbyhq.com") => JobScraperKind::AshbyHQ,
             Some("www.google.com") => JobScraperKind::Google,
             Some("explore.jobs.netflix.net") => JobScraperKind::Netflix,
             Some(domain) => {
