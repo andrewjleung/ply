@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use bon::Builder;
 use chrono::{DateTime, Utc};
 use clap::ValueEnum;
+use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 
@@ -39,6 +40,12 @@ pub enum StageType {
 impl StageType {
     pub fn is_terminal(&self) -> bool {
         matches!(self, Self::Rejected | Self::Accepted)
+    }
+}
+
+impl fmt::Display for StageType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
     }
 }
 

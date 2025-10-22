@@ -19,6 +19,17 @@ impl Run for No {
     fn run(&self, config: &PlyConfig) -> Result<()> {
         let mut document = document::read::<Application>(Path::new(&self.path))?;
 
+        if !document.record.is_active()
+            && let Some(stage) = document.record.current_stage()
+        {
+            println!(
+                "application for {} is already {}",
+                document.record.pretty_print(),
+                stage.stage_type,
+            );
+            return Ok(());
+        }
+
         document.record.stages.push(Stage {
             start_time: Utc::now(),
             deadline: None,
