@@ -1,23 +1,13 @@
 use anyhow::{Context, Result, anyhow};
 use regex::Regex;
 use scraper::{Html, Selector};
-use url::Url;
 
-use crate::{
-    job::{Job, SalaryRange},
-    parse::Parse,
-};
+use crate::{job::SalaryRange, job_listing::Role, parse::Parse};
 
-#[derive(Default, Debug)]
-pub struct Greenhouse {
-    pub url: Option<Url>,
-}
+pub struct Greenhouse {}
 
 impl Greenhouse {
-    fn parse_company_title_and_team(
-        &self,
-        document: &Html,
-    ) -> Result<(String, String, Option<String>)> {
+    fn parse_company_title_and_team(document: &Html) -> Result<(String, String, Option<String>)> {
         let document_title_selector =
             Selector::parse("head > title").expect("failed to compile title selector");
         let document_title = &document
@@ -86,16 +76,14 @@ impl Greenhouse {
     }
 }
 
-impl Parse<Greenhouse> for Job {
-    fn parse_with_config(s: &str, config: &Greenhouse) -> Result<Option<Self>> {
+impl Parse<&str, Role> for Greenhouse {
+    fn parse(s: &str) -> Result<Option<Role>> {
         let document = Html::parse_document(s);
-        let (company, title, team) = config
-            .parse_company_title_and_team(&document)
+        let (company, title, team) = Self::parse_company_title_and_team(&document)
             .context("failed to parse company, title, and team")?;
-        let salary_range = SalaryRange::parse(&s)?;
+        let salary_range = SalaryRange::parse(s)?;
 
-        Ok(Some(Job {
-            listing_url: config.url.to_owned(),
+        Ok(Some(Role {
             company: company.to_owned(),
             title: title.to_owned(),
             team: team.to_owned(),

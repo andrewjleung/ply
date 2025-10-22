@@ -1,15 +1,14 @@
 use anyhow::Result;
 
+pub mod ashby;
+pub mod google;
+pub mod greenhouse;
+pub mod meta;
 pub mod salary;
 
-pub trait Parse<Config>
+pub trait Parse<Parsable, Parsed>
 where
-    Config: Default,
-    Self: Sized,
+    Parsed: Sized,
 {
-    fn parse_with_config(s: &str, config: &Config) -> Result<Option<Self>>;
-
-    fn parse(s: &str) -> Result<Option<Self>> {
-        Self::parse_with_config(s, &Config::default())
-    }
+    fn parse(p: Parsable) -> Result<Option<Parsed>>;
 }

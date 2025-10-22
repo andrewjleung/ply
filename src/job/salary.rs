@@ -1,13 +1,14 @@
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SalaryRange {
     pub lower: u32,
     pub range: Option<u32>,
 }
 
 impl SalaryRange {
+    #[allow(dead_code)]
     pub fn upper(&self) -> Option<u32> {
         self.range.map(|r| self.lower + r)
     }

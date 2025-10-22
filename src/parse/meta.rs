@@ -1,20 +1,13 @@
 use anyhow::{Context, Result, anyhow};
 use regex::Regex;
 use scraper::{Html, Selector};
-use url::Url;
 
-use crate::{
-    job::{Job, SalaryRange},
-    parse::Parse,
-};
+use crate::{job::SalaryRange, job_listing::Role, parse::Parse};
 
-#[derive(Default, Debug)]
-pub struct Meta {
-    pub url: Option<Url>,
-}
+pub struct Meta {}
 
 impl Meta {
-    fn parse_title_and_team(&self, document: &Html) -> Result<(String, Option<String>)> {
+    fn parse_title_and_team(document: &Html) -> Result<(String, Option<String>)> {
         let document_title_selector =
             Selector::parse("#pageTitle").expect("failed to compile title selector");
 
@@ -38,7 +31,7 @@ impl Meta {
         Err(anyhow!("failed to match title {document_title}"))
     }
 
-    fn parse_salary_range(&self, s: &str) -> Result<Option<SalaryRange>> {
+    fn parse_salary_range(s: &str) -> Result<Option<SalaryRange>> {
         Regex::new(r">\$.*to.*\$.*bonus \+ equity \+ benefits")
             .unwrap()
             .captures(s)
@@ -48,18 +41,16 @@ impl Meta {
     }
 }
 
-impl Parse<Meta> for Job {
-    fn parse_with_config(s: &str, config: &Meta) -> Result<Option<Self>> {
+impl Parse<&str, Role> for Meta {
+    fn parse(s: &str) -> Result<Option<Role>> {
         let document = Html::parse_document(s);
-        let (title, team) = config
-            .parse_title_and_team(&document)
-            .context("failed to parse title and team")?;
+        let (title, team) =
+            Self::parse_title_and_team(&document).context("failed to parse title and team")?;
 
-        let salary_range = config.parse_salary_range(s)?;
+        let salary_range = Self::parse_salary_range(s)?;
 
-        Ok(Some(Job {
-            listing_url: config.url.to_owned(),
-            company: "Meta".to_string(),
+        Ok(Some(Role {
+            company: "Meta".to_owned(),
             title: title.to_owned(),
             team: team.to_owned(),
             salary_range,

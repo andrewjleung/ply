@@ -2,21 +2,17 @@ use anyhow::{Context, Error, Result, anyhow};
 use scraper::{Html, Selector};
 use serde_json::Value;
 use std::ops::Not;
-use url::Url;
 
 use crate::{
-    job::{Job, SalaryRange},
-    parse::Parse,
-    parse::salary::parse_yearly_bound,
+    job::SalaryRange,
+    job_listing::Role,
+    parse::{Parse, salary::parse_yearly_bound},
 };
 
-#[derive(Default, Debug)]
-pub struct Ashby {
-    pub url: Option<Url>,
-}
+pub struct Ashby {}
 
 impl Ashby {
-    pub fn parse_title_and_team(&self, data: &Value) -> Result<(String, Option<String>)> {
+    fn parse_title_and_team(data: &Value) -> Result<(String, Option<String>)> {
         let title_and_team = data["title"].as_str().ok_or_else(|| {
             Error::msg("failed to parse key 'title' in job posting JSON data as string")
         })?;
@@ -30,7 +26,7 @@ impl Ashby {
         })
     }
 
-    pub fn parse_company(&self, data: &Value) -> Result<String> {
+    pub fn parse_company(data: &Value) -> Result<String> {
         data["hiringOrganization"]["name"]
         .as_str()
         .ok_or_else(|| {
@@ -41,7 +37,7 @@ impl Ashby {
         .map(|s| s.trim().to_owned())
     }
 
-    pub fn parse_salary_range(&self, data: &Value) -> Result<Option<SalaryRange>> {
+    pub fn parse_salary_range(data: &Value) -> Result<Option<SalaryRange>> {
         let unit = data["baseSalary"]["value"]["unitText"]
         .as_str()
         .ok_or_else(|| {
@@ -70,8 +66,8 @@ impl Ashby {
     }
 }
 
-impl Parse<Ashby> for Job {
-    fn parse_with_config(s: &str, config: &Ashby) -> Result<Option<Self>> {
+impl Parse<&str, Role> for Ashby {
+    fn parse(s: &str) -> Result<Option<Role>> {
         let document = Html::parse_document(s);
         let job_posting_data_selector =
             Selector::parse(r#"script[type="application/ld+json"]"#).unwrap();
@@ -87,12 +83,11 @@ impl Parse<Ashby> for Job {
         let job_posting_data: Value = serde_json::from_str(&job_posting_data)
             .context("failed to parse job posting data as JSON")?;
 
-        let company = config.parse_company(&job_posting_data)?;
-        let (title, team) = config.parse_title_and_team(&job_posting_data)?;
-        let salary_range = config.parse_salary_range(&job_posting_data)?;
+        let company = Self::parse_company(&job_posting_data)?;
+        let (title, team) = Self::parse_title_and_team(&job_posting_data)?;
+        let salary_range = Self::parse_salary_range(&job_posting_data)?;
 
-        Ok(Some(Job {
-            listing_url: config.url.to_owned(),
+        Ok(Some(Role {
             company,
             title: title.to_owned(),
             team: team.to_owned(),

@@ -9,14 +9,9 @@ use std::{
 };
 use url::Url;
 
-use crate::fetch::{Fetch, Source};
 use crate::job::Job;
-use crate::job_listing::JobListing;
-use crate::parse::Parse;
 
-pub mod google;
 pub mod hiring_cafe;
-pub mod html;
 pub mod netflix;
 
 pub struct ScrapedContent {
@@ -31,7 +26,6 @@ pub trait JobScraper {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum JobScraperKind {
     HiringCafe,
-    Google,
     Netflix,
 }
 
@@ -43,10 +37,6 @@ impl JobScraper for JobScraperKind {
                 .context("failed to create hiring cafe scraper")?
                 .scrape(url)
                 .context("failed to scrape with hiring cafe scraper"),
-            JobScraperKind::Google => google::new(url)
-                .context("failed to create google scraper")?
-                .scrape(url)
-                .context("failed to scrape with google scraper"),
             JobScraperKind::Netflix => netflix::new(url)
                 .context("failed to create netflix scraper")?
                 .scrape(url)
@@ -104,7 +94,6 @@ fn infer_scraper_kind(
     let scraper_kind = match (url.scheme(), scraper_kind) {
         ("https", None) => match url.domain() {
             Some("hiring.cafe") => JobScraperKind::HiringCafe,
-            Some("www.google.com") => JobScraperKind::Google,
             Some("explore.jobs.netflix.net") => JobScraperKind::Netflix,
             Some(domain) => {
                 return Err(anyhow!(
@@ -127,20 +116,6 @@ fn infer_scraper_kind(
     };
 
     Ok((url, scraper_kind))
-}
-
-pub fn scrape_job_listing(source: Source, listing: JobListing) -> Result<ScrapedContent> {
-    let content = source.fetch()?;
-    let job = Job::parse_with_config(&content, &listing)
-        .transpose()
-        .ok_or(anyhow!("no job was parsed for job listing {:?}", &listing))
-        .context(format!(
-            "failed to parse job for job listing {:?}",
-            &listing
-        ))
-        .flatten()?;
-
-    Ok(ScrapedContent { job, content })
 }
 
 pub fn scrape(url: &Url, scraper_kind: Option<JobScraperKind>) -> Result<ScrapedContent> {
