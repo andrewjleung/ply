@@ -80,6 +80,14 @@ impl Application {
             .context("failed to write application")
     }
 
+    pub fn pretty_print(&self) -> String {
+        if let Some(team) = &self.job.team {
+            format!("{}, {} at {}", self.job.title, team, self.job.company)
+        } else {
+            format!("{} at {}", self.job.title, self.job.company)
+        }
+    }
+
     pub fn current_stage(&self) -> Option<Stage> {
         let mut stages = self.stages.clone();
         stages.sort_by(|a, b| a.start_time.cmp(&b.start_time));

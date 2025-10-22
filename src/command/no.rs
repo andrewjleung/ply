@@ -30,6 +30,11 @@ impl Run for No {
             .write(&config.data_dir)
             .context("failed to write new stage to document")?;
 
+        println!(
+            "application for {} marked as rejected",
+            document.record.pretty_print()
+        );
+
         Ok(())
     }
 }
