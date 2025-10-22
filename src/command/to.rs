@@ -112,8 +112,6 @@ impl Run for To {
                     println!("application created at {}", app.filename());
                 }
 
-                println!("application created at {}", app.filename());
-
                 Ok(())
             }
         }
