@@ -42,14 +42,12 @@ pub struct To {
 
 impl Run for To {
     fn run(&self, config: &config::PlyConfig) -> Result<()> {
-        match &self.url {
+        let application = match &self.url {
             Some(url) => {
                 let url = Url::parse(url).context("failed to parse given URL")?;
 
                 let scraped = ScrapedContent::from_url(&url)
-                    .and_then(|content| {
-                        content.ok_or(anyhow!("[experimental] no result from scraping URL"))
-                    })
+                    .and_then(|content| content.ok_or(anyhow!("no result from scraping URL")))
                     .context("failed to scrape URL")?;
 
                 let app = application::new(
@@ -57,7 +55,6 @@ impl Run for To {
                     self.cycle
                         .to_owned()
                         .and_then(|c| c.is_empty().not().then_some(c))
-                        .to_owned()
                         .or(config.default_cycle.to_owned()),
                 );
 
@@ -68,14 +65,7 @@ impl Run for To {
                         .context("failed to snapshot content")?;
                 }
 
-                if self.print {
-                    println!("{}", app.new_document().new_content()?);
-                } else {
-                    app.write_new_document(config)?;
-                    println!("application created at {}", app.filename());
-                }
-
-                Ok(())
+                app
             }
             None => {
                 let job = job::Job {
@@ -86,17 +76,21 @@ impl Run for To {
                     salary_range: None,
                 };
 
-                let app = application::new(job, self.cycle.clone());
-
-                if self.print {
-                    println!("{}", app.new_document().new_content()?);
-                } else {
-                    app.write_new_document(config)?;
-                    println!("application created at {}", app.filename());
-                }
-
-                Ok(())
+                application::new(job, self.cycle.clone())
             }
+        };
+
+        if self.print {
+            println!("{}", application.new_document().new_content()?);
+        } else {
+            application.write_new_document(config)?;
+            println!(
+                "application for {} created at {}",
+                application.pretty_print(),
+                application.filename()
+            );
         }
+
+        Ok(())
     }
 }
