@@ -4,7 +4,10 @@ use url::Url;
 use crate::{
     fetch::{Fetch, Source},
     job::{Job, SalaryRange},
-    parse::{Parse, ashby::Ashby, google::Google, greenhouse::Greenhouse, meta::Meta},
+    parse::{
+        Parse, ashby::Ashby, google::Google, greenhouse::Greenhouse, hiringcafe::HiringCafe,
+        meta::Meta,
+    },
     scrape::ScrapedContent,
 };
 
@@ -37,7 +40,7 @@ impl JobSource {
         }
 
         url.domain().map(|domain| match domain {
-            // "hiring.cafe" => JobListing::HiringCafe,
+            "hiring.cafe" => JobSource::HiringCafe(url.to_owned()),
             "jobs.ashbyhq.com" => JobSource::Ashby(url.to_owned()),
             "job-boards.greenhouse.io" => JobSource::Greenhouse(url.to_owned()),
             "www.metacareers.com" => JobSource::Meta(url.to_owned()),
@@ -52,6 +55,7 @@ impl JobSource {
             JobSource::Ashby(_) => Ashby::parse(s),
             JobSource::Google(_) => Google::parse(s),
             JobSource::Greenhouse(_) => Greenhouse::parse(s),
+            JobSource::HiringCafe(_) => HiringCafe::parse(s),
             JobSource::Meta(_) => Meta::parse(s),
             _ => Ok(None),
         }

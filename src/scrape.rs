@@ -11,7 +11,6 @@ use url::Url;
 
 use crate::job::Job;
 
-pub mod hiring_cafe;
 pub mod netflix;
 
 pub struct ScrapedContent {
@@ -25,7 +24,6 @@ pub trait JobScraper {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum JobScraperKind {
-    HiringCafe,
     Netflix,
 }
 
@@ -33,10 +31,6 @@ impl JobScraper for JobScraperKind {
     // TODO: this API is weird... why do we need to supply URL twice?
     fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
         match self {
-            JobScraperKind::HiringCafe => hiring_cafe::new(url)
-                .context("failed to create hiring cafe scraper")?
-                .scrape(url)
-                .context("failed to scrape with hiring cafe scraper"),
             JobScraperKind::Netflix => netflix::new(url)
                 .context("failed to create netflix scraper")?
                 .scrape(url)
@@ -93,7 +87,6 @@ fn infer_scraper_kind(
 ) -> Result<(Url, JobScraperKind)> {
     let scraper_kind = match (url.scheme(), scraper_kind) {
         ("https", None) => match url.domain() {
-            Some("hiring.cafe") => JobScraperKind::HiringCafe,
             Some("explore.jobs.netflix.net") => JobScraperKind::Netflix,
             Some(domain) => {
                 return Err(anyhow!(
