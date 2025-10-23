@@ -23,7 +23,7 @@ impl Run for No {
             && let Some(stage) = document.record.current_stage()
         {
             println!(
-                "application for {} is already {}",
+                "application for '{}' is already {}",
                 document.record.pretty_print(),
                 stage.stage_type,
             );
@@ -42,7 +42,7 @@ impl Run for No {
             .context("failed to write new stage to document")?;
 
         println!(
-            "application for {} marked as rejected",
+            "application for '{}' marked as rejected",
             document.record.pretty_print()
         );
 

@@ -84,7 +84,7 @@ impl Run for To {
         } else {
             application.write_new_document(config)?;
             println!(
-                "application for {} created at {}",
+                "application for '{}' created at {}",
                 application.pretty_print(),
                 application.filename()
             );
