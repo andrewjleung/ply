@@ -2,7 +2,7 @@ use anyhow::{Context, Result, anyhow};
 use regex::Regex;
 use scraper::{Html, Selector};
 
-use crate::{job::SalaryRange, job_listing::Role, parse::Parse};
+use crate::{job::SalaryRange, parse::Parse, parse::Role};
 
 pub struct Meta {}
 

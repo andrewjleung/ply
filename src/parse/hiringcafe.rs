@@ -3,7 +3,7 @@ use std::ops::Not;
 use anyhow::{Context, Result};
 use scraper::{Html, Selector};
 
-use crate::{job::SalaryRange, job_listing::Role, parse::Parse};
+use crate::{job::SalaryRange, parse::Parse, parse::Role};
 
 pub struct HiringCafe {}
 

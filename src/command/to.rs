@@ -4,12 +4,8 @@ use anyhow::{Context, Result, anyhow};
 use clap::Args;
 
 use crate::{
-    application,
-    command::Run,
-    config,
-    document::Filename,
-    job,
-    scrape::{self, JobScraperKind, ScrapedContent, scrape},
+    application, command::Run, config, document::Filename, job, parse::Parser,
+    scrape::ScrapedContent,
 };
 use url::Url;
 
@@ -18,10 +14,10 @@ pub struct To {
     /// The URL of the job listing
     pub url: Option<String>,
 
-    /// The scraper to use, this will be inferred when the given URL scheme is 'https' and required
+    /// The parser to use, this will be inferred when the given URL scheme is 'https' and required
     /// if it is 'file'
     #[arg(value_enum, long, short, requires("url"))]
-    pub scraper: Option<JobScraperKind>,
+    pub parser: Option<Parser>,
 
     /// The company for a new application, required if no listing URL is given
     #[arg(long, conflicts_with("url"), required_unless_present("url"))]
@@ -42,10 +38,6 @@ pub struct To {
     // Print the application to STDOUT instead of writing it
     #[arg(long, short)]
     pub print: bool,
-
-    // Opt into experimental refactoring away from scrapers
-    #[arg(long, short)]
-    pub use_job_listings_feature: bool,
 }
 
 impl Run for To {
@@ -54,14 +46,11 @@ impl Run for To {
             Some(url) => {
                 let url = Url::parse(url).context("failed to parse given URL")?;
 
-                let mut scraped = if self.use_job_listings_feature {
-                    ScrapedContent::from_url(&url).and_then(|content| {
+                let scraped = ScrapedContent::from_url(&url)
+                    .and_then(|content| {
                         content.ok_or(anyhow!("[experimental] no result from scraping URL"))
                     })
-                } else {
-                    scrape(&url, self.scraper)
-                }
-                .context("failed to scrape URL")?;
+                    .context("failed to scrape URL")?;
 
                 let app = application::new(
                     scraped.job.to_owned(),
@@ -74,12 +63,9 @@ impl Run for To {
 
                 // TODO: handle repeat applications to the same listing
                 if let Ok(filename) = scraped.job.filename() {
-                    scrape::snapshot_content(
-                        &mut scraped.content,
-                        &config.data_dir.join("listings"),
-                        &filename,
-                    )
-                    .context("failed to snapshot content")?;
+                    scraped
+                        .snapshot(&config.data_dir.join("listings"), &filename)
+                        .context("failed to snapshot content")?;
                 }
 
                 if self.print {

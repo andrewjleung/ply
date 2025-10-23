@@ -1,32 +1,31 @@
-use anyhow::{Context, Error, Result, anyhow};
+use anyhow::{Context, Error, Result};
 use scraper::{Html, Selector};
 use serde_json::Value;
 use std::ops::Not;
 
-use crate::{
-    job::SalaryRange,
-    parse::Role,
-    parse::{Parse, salary::parse_yearly_bound},
-};
+use crate::{job::SalaryRange, parse::Parse, parse::Role};
 
-pub struct Ashby {}
+pub struct Netflix {}
 
-impl Ashby {
+impl Netflix {
     fn parse_title_and_team(data: &Value) -> Result<(String, Option<String>)> {
-        let title_and_team = data["title"].as_str().ok_or_else(|| {
-            Error::msg("failed to parse key 'title' in job posting JSON data as string")
-        })?;
+        let title_and_team = data["title"]
+            .as_str()
+            .map(html_escape::decode_html_entities)
+            .ok_or_else(|| {
+                Error::msg("failed to parse key 'title' in job posting JSON data as string")
+            })?;
 
         Ok(match title_and_team.split_once(", ") {
             Some((title, team)) => (
                 title.to_owned(),
                 team.is_empty().not().then_some(team).map(|t| t.to_owned()),
             ),
-            None => (title_and_team.to_owned(), None),
+            None => (title_and_team.to_string(), None),
         })
     }
 
-    pub fn parse_company(data: &Value) -> Result<String> {
+    fn parse_company(data: &Value) -> Result<String> {
         data["hiringOrganization"]["name"]
         .as_str()
         .ok_or_else(|| {
@@ -37,41 +36,25 @@ impl Ashby {
         .map(|s| s.trim().to_owned())
     }
 
-    pub fn parse_salary_range(data: &Value) -> Result<Option<SalaryRange>> {
-        let unit = data["baseSalary"]["value"]["unitText"]
+    fn parse_salary_range(data: &Value) -> Result<Option<SalaryRange>> {
+        let description = data["description"]
         .as_str()
+        .map(html_escape::decode_html_entities)
         .ok_or_else(|| {
             Error::msg(
                 "failed to parse key 'baseSalary.value.unitText' in job posting JSON data as string",
             )
         })?;
 
-        if unit != "YEAR" {
-            return Err(anyhow!("salary range unit is not yearly, got {unit}"));
-        }
-
-        let lower = data["baseSalary"]["value"]["minValue"]
-            .as_str()
-            .map(|v| parse_yearly_bound(v, "year"))
-            .transpose()
-            .context("failed to parse lower bound")?;
-
-        let upper = data["baseSalary"]["value"]["maxValue"]
-            .as_str()
-            .map(|v| parse_yearly_bound(v, "year"))
-            .transpose()
-            .context("failed to parse upper bound")?;
-
-        SalaryRange::try_from_maybe_bounds(lower, upper)
+        SalaryRange::parse(&description)
     }
 }
 
-impl Parse<&str, Role> for Ashby {
+impl Parse<&str, Role> for Netflix {
     fn parse(s: &str) -> Result<Option<Role>> {
-        let document = Html::parse_document(s);
         let job_posting_data_selector =
             Selector::parse(r#"script[type="application/ld+json"]"#).unwrap();
-
+        let document = Html::parse_document(s);
         let job_posting_data = document
             .select(&job_posting_data_selector)
             .next()
@@ -85,10 +68,10 @@ impl Parse<&str, Role> for Ashby {
 
         let company = Self::parse_company(&job_posting_data)?;
         let (title, team) = Self::parse_title_and_team(&job_posting_data)?;
-        let salary_range = Self::parse_salary_range(&job_posting_data)?;
+        let salary_range = Self::parse_salary_range(&job_posting_data).unwrap_or(None);
 
         Ok(Some(Role {
-            company,
+            company: company.to_owned(),
             title: title.to_owned(),
             team: team.to_owned(),
             salary_range,

@@ -1,8 +1,8 @@
-use anyhow::anyhow;
+use crate::fetch::{Fetch, Source};
+use crate::parse::Parser;
 use anyhow::{Context, Error, Result};
 use camino::Utf8Path as Path;
 use camino::Utf8PathBuf as PathBuf;
-use clap::ValueEnum;
 use std::{
     fs::{DirBuilder, File},
     io::Write,
@@ -11,107 +11,73 @@ use url::Url;
 
 use crate::job::Job;
 
-pub mod netflix;
-
 pub struct ScrapedContent {
     pub job: Job,
     pub content: String,
 }
 
-pub trait JobScraper {
-    fn scrape(&self, url: &Url) -> Result<ScrapedContent>;
-}
+impl ScrapedContent {
+    pub fn from_url(url: &Url) -> Result<Option<Self>> {
+        let listing = if let Some(parser) = Parser::infer(url) {
+            let content = Source::try_from(url)?.fetch()?;
+            let role = parser.parse_role(&content)?;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-pub enum JobScraperKind {
-    Netflix,
-}
+            role.map(|role| ScrapedContent {
+                job: Job {
+                    listing_url: Some(url.to_owned()),
+                    company: role.company,
+                    title: role.title,
+                    team: role.team,
+                    salary_range: role.salary_range,
+                },
+                content,
+            })
+        } else {
+            None
+        };
 
-impl JobScraper for JobScraperKind {
-    // TODO: this API is weird... why do we need to supply URL twice?
-    fn scrape(&self, url: &Url) -> Result<ScrapedContent> {
-        match self {
-            JobScraperKind::Netflix => netflix::new(url)
-                .context("failed to create netflix scraper")?
-                .scrape(url)
-                .context("failed to scrape with netflix scraper"),
+        Ok(listing)
+    }
+
+    pub fn snapshot(&self, content_dir: &Path, filename: &str) -> Result<PathBuf> {
+        if content_dir.is_file() {
+            return Err(Error::msg(format!(
+                "content directory {} is a file, not a directory",
+                content_dir
+            )));
         }
-    }
-}
 
-pub fn snapshot_content(content: &mut str, content_dir: &Path, filename: &str) -> Result<PathBuf> {
-    if content_dir.is_file() {
-        return Err(Error::msg(format!(
-            "content directory {} is a file, not a directory",
-            content_dir
-        )));
-    }
+        DirBuilder::new()
+            .recursive(true)
+            .create(content_dir)
+            .context(format!(
+                "failed to create content directory {} for scraped content",
+                content_dir
+            ))?;
 
-    DirBuilder::new()
-        .recursive(true)
-        .create(content_dir)
-        .context(format!(
-            "failed to create content directory {} for scraped content",
-            content_dir
+        let filepath = content_dir.join(filename);
+
+        if filepath.try_exists().context(format!(
+            "failed to determine if snapshotted content already exists at {}",
+            filepath
+        ))? {
+            return Ok(filepath);
+        };
+
+        let mut f = File::create_new(&filepath).context(format!(
+            "failed to create file {} for scraped content",
+            filepath
         ))?;
 
-    let filepath = content_dir.join(filename);
+        let markdown_content = htmd::HtmlToMarkdown::builder()
+            .skip_tags(vec!["style"])
+            .build()
+            .convert(&self.content)
+            .context("failed to convert scraped HTML to markdown")?;
 
-    if filepath.try_exists().context(format!(
-        "failed to determine if snapshotted content already exists at {}",
-        filepath
-    ))? {
-        return Ok(filepath);
-    };
+        f.write(markdown_content.as_bytes())
+            .context("failed to write scraped markdown content")?;
 
-    let mut f = File::create_new(&filepath).context(format!(
-        "failed to create file {} for scraped content",
-        filepath
-    ))?;
-
-    let markdown_content = htmd::HtmlToMarkdown::builder()
-        .skip_tags(vec!["style"])
-        .build()
-        .convert(content)
-        .context("failed to convert scraped HTML to markdown")?;
-
-    f.write(markdown_content.as_bytes())
-        .context("failed to write scraped markdown content")?;
-
-    Ok(filepath)
-}
-
-fn infer_scraper_kind(
-    url: Url,
-    scraper_kind: Option<JobScraperKind>,
-) -> Result<(Url, JobScraperKind)> {
-    let scraper_kind = match (url.scheme(), scraper_kind) {
-        ("https", None) => match url.domain() {
-            Some("explore.jobs.netflix.net") => JobScraperKind::Netflix,
-            Some(domain) => {
-                return Err(anyhow!(
-                    "could not infer scraper kind from unrecognized HTTPS domain {domain}"
-                ));
-            }
-            None => {
-                return Err(anyhow!(
-                    "could not infer scraper kind from domain-less HTTPS URL {url}"
-                ));
-            }
-        },
-        (_, None) => {
-            return Err(anyhow!(
-                "cannot infer scraper kind from URL scheme {}, please specify a scraper",
-                url.scheme()
-            ));
-        }
-        (_, Some(kind)) => kind,
-    };
-
-    Ok((url, scraper_kind))
-}
-
-pub fn scrape(url: &Url, scraper_kind: Option<JobScraperKind>) -> Result<ScrapedContent> {
-    let (url, scraper_kind) = infer_scraper_kind(url.to_owned(), scraper_kind)?;
-    scraper_kind.scrape(&url)
+        Ok(filepath)
+    }
 }
