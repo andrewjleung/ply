@@ -1,7 +1,6 @@
-use std::ops::Not;
-
 use anyhow::{Context, Result, anyhow};
 use clap::Args;
+use std::ops::Not;
 
 use crate::{
     application, command::Run, config, document::Filename, job, parse::Parser,
@@ -42,6 +41,12 @@ pub struct To {
 
 impl Run for To {
     fn run(&self, config: &config::PlyConfig) -> Result<()> {
+        let cycle = self
+            .cycle
+            .to_owned()
+            .and_then(|c| c.is_empty().not().then_some(c))
+            .or(config.default_cycle.to_owned());
+
         let application = match &self.url {
             Some(url) => {
                 let url = Url::parse(url).context("failed to parse given URL")?;
@@ -50,13 +55,7 @@ impl Run for To {
                     .and_then(|content| content.ok_or(anyhow!("no result from scraping URL")))
                     .context("failed to scrape URL")?;
 
-                let app = application::new(
-                    scraped.job.to_owned(),
-                    self.cycle
-                        .to_owned()
-                        .and_then(|c| c.is_empty().not().then_some(c))
-                        .or(config.default_cycle.to_owned()),
-                );
+                let app = application::new(scraped.job.to_owned(), cycle);
 
                 // TODO: handle repeat applications to the same listing
                 if let Ok(filename) = scraped.job.filename() {
@@ -76,7 +75,7 @@ impl Run for To {
                     salary_range: None,
                 };
 
-                application::new(job, self.cycle.clone())
+                application::new(job, cycle)
             }
         };
 
