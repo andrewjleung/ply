@@ -7,12 +7,17 @@ use crate::{
     parse::{Parse, ParseSelf, Role},
 };
 
-pub struct Meta {}
+pub struct Mini {
+    pub company: String,
+    pub title_and_team_selector: String,
+    pub title_and_team_regex: Option<Regex>,
+    pub salary_range_selector: String,
+}
 
-impl Meta {
-    fn parse_title_and_team(document: &Html) -> Result<(String, Option<String>)> {
-        let document_title_selector =
-            Selector::parse("#pageTitle").expect("failed to compile title selector");
+impl Mini {
+    fn parse_title_and_team(&self, document: &Html) -> Result<(String, Option<String>)> {
+        let document_title_selector = Selector::parse(&self.title_and_team_selector)
+            .expect("failed to compile title selector");
 
         let document_title = &document
             .select(&document_title_selector)
@@ -23,7 +28,10 @@ impl Meta {
             .join("");
 
         let document_title = html_escape::decode_html_entities(document_title);
-        let title_re = Regex::new(r"^(?P<title>[^,]+),\s*(?P<team>[^|]+)\s*\|").unwrap();
+        let title_re = self
+            .title_and_team_regex
+            .clone()
+            .unwrap_or(Regex::new(r"^(?P<title>[^,]+),\s*(?P<team>[^|]+)\s*\|").unwrap());
 
         if let Some(caps) = title_re.captures(&document_title) {
             let title = caps.name("title").unwrap().as_str().trim().to_string();
@@ -34,8 +42,8 @@ impl Meta {
         Err(anyhow!("failed to match title {document_title}"))
     }
 
-    fn parse_salary_range(s: &str) -> Result<Option<SalaryRange>> {
-        Regex::new(r">\$.*to.*\$.*bonus \+ equity \+ benefits")
+    fn parse_salary_range(&self, s: &str) -> Result<Option<SalaryRange>> {
+        Regex::new(&self.salary_range_selector)
             .unwrap()
             .captures(s)
             .and_then(|captures| captures.iter().next().flatten())
@@ -44,16 +52,17 @@ impl Meta {
     }
 }
 
-impl Parse<&str, Role> for Meta {
+impl Parse<&str, Role> for Mini {
     fn parse(&self, s: &str) -> Result<Option<Role>> {
         let document = Html::parse_document(s);
-        let (title, team) =
-            Self::parse_title_and_team(&document).context("failed to parse title and team")?;
+        let (title, team) = self
+            .parse_title_and_team(&document)
+            .context("failed to parse title and team")?;
 
-        let salary_range = Self::parse_salary_range(s)?;
+        let salary_range = self.parse_salary_range(s)?;
 
         Ok(Some(Role {
-            company: "Meta".to_owned(),
+            company: self.company.to_owned(),
             title: title.to_owned(),
             team: team.to_owned(),
             salary_range,

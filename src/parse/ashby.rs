@@ -67,7 +67,7 @@ impl Ashby {
 }
 
 impl Parse<&str, Role> for Ashby {
-    fn parse(s: &str) -> Result<Option<Role>> {
+    fn parse(&self, s: &str) -> Result<Option<Role>> {
         let document = Html::parse_document(s);
         let job_posting_data_selector =
             Selector::parse(r#"script[type="application/ld+json"]"#).unwrap();

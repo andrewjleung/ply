@@ -1,11 +1,11 @@
-use crate::{job::SalaryRange, parse::Parse};
+use crate::{job::SalaryRange, parse::ParseSelf};
 use anyhow::{Context, Result, anyhow};
 use regex::{Captures, Regex};
 
 const DEFAULT_BOUND_UNIT: &str = "year";
 const WORKING_HOURS_PER_YEAR: f64 = 2080.0;
 
-impl Parse<&str, Self> for SalaryRange {
+impl ParseSelf<&str> for SalaryRange {
     fn parse(s: &str) -> Result<Option<Self>>
     where
         Self: Sized,

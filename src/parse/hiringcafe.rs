@@ -3,7 +3,10 @@ use std::ops::Not;
 use anyhow::{Context, Result};
 use scraper::{Html, Selector};
 
-use crate::{job::SalaryRange, parse::Parse, parse::Role};
+use crate::{
+    job::SalaryRange,
+    parse::{Parse, ParseSelf, Role},
+};
 
 pub struct HiringCafe {}
 
@@ -55,7 +58,7 @@ impl HiringCafe {
 }
 
 impl Parse<&str, Role> for HiringCafe {
-    fn parse(s: &str) -> Result<Option<Role>> {
+    fn parse(&self, s: &str) -> Result<Option<Role>> {
         let document = Html::parse_document(s);
         let company = Self::parse_company(&document)?;
         let (title, team) = Self::parse_title_and_team(&document)?;

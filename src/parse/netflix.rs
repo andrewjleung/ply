@@ -3,7 +3,10 @@ use scraper::{Html, Selector};
 use serde_json::Value;
 use std::ops::Not;
 
-use crate::{job::SalaryRange, parse::Parse, parse::Role};
+use crate::{
+    job::SalaryRange,
+    parse::{Parse, ParseSelf, Role},
+};
 
 pub struct Netflix {}
 
@@ -51,7 +54,7 @@ impl Netflix {
 }
 
 impl Parse<&str, Role> for Netflix {
-    fn parse(s: &str) -> Result<Option<Role>> {
+    fn parse(&self, s: &str) -> Result<Option<Role>> {
         let job_posting_data_selector =
             Selector::parse(r#"script[type="application/ld+json"]"#).unwrap();
         let document = Html::parse_document(s);

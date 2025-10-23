@@ -2,7 +2,10 @@ use anyhow::{Context, Result, anyhow};
 use regex::Regex;
 use scraper::{Html, Selector};
 
-use crate::{job::SalaryRange, parse::Parse, parse::Role};
+use crate::{
+    job::SalaryRange,
+    parse::{Parse, ParseSelf, Role},
+};
 
 pub struct Greenhouse {}
 
@@ -77,7 +80,7 @@ impl Greenhouse {
 }
 
 impl Parse<&str, Role> for Greenhouse {
-    fn parse(s: &str) -> Result<Option<Role>> {
+    fn parse(&self, s: &str) -> Result<Option<Role>> {
         let document = Html::parse_document(s);
         let (company, title, team) = Self::parse_company_title_and_team(&document)
             .context("failed to parse company, title, and team")?;
