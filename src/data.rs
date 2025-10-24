@@ -10,6 +10,7 @@ const HASH_ID_LENGTH: usize = 7;
 
 pub fn normalize_filename_attr(name: &str) -> String {
     name.to_lowercase()
+        .replace(" - ", "_")
         .replace(" ", "_")
         .replace("(", "")
         .replace(")", "")
