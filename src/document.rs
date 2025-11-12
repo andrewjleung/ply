@@ -41,6 +41,10 @@ where
     for line in BufReader::new(file).lines() {
         let line = line.context(format!("failed to read line in document at {}", filename))?;
         if line == "---" {
+            if in_frontmatter {
+                break;
+            }
+
             in_frontmatter = !in_frontmatter;
         } else if in_frontmatter {
             frontmatter.push_str(&line);
