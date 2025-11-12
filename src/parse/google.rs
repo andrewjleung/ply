@@ -21,7 +21,7 @@ impl Google {
             .collect::<Vec<_>>()
             .join("");
         let document_title = html_escape::decode_html_entities(document_title);
-        let title_re = Regex::new(r"^(?P<title>.*), (?P<team>.*) — Google Careers$").unwrap();
+        let title_re = Regex::new(r"^(?P<title>.*), (?P<team>.*) — Google Careers").unwrap();
 
         if let Some(caps) = title_re.captures(&document_title) {
             let title = caps.name("title").unwrap().as_str().trim().to_string();
@@ -31,6 +31,15 @@ impl Google {
 
         Err(anyhow!("failed to match title {document_title}"))
     }
+
+    fn parse_salary_range(s: &str) -> Result<Option<SalaryRange>> {
+        Regex::new(r"\$.*-.*\$.*\+ bonus \+ equity \+ benefits")
+            .unwrap()
+            .captures(s)
+            .and_then(|captures| captures.iter().next().flatten())
+            .and_then(|line| SalaryRange::parse(line.as_str()).transpose())
+            .transpose()
+    }
 }
 
 impl Parse<&str, Role> for Google {
@@ -39,7 +48,7 @@ impl Parse<&str, Role> for Google {
         let (title, team) =
             Google::parse_title_and_team(&document).context("failed to parse title and team")?;
 
-        let salary_range = SalaryRange::parse(s)?;
+        let salary_range = Google::parse_salary_range(s)?;
 
         Ok(Some(Role {
             company: "Google".to_owned(),

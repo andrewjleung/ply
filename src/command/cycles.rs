@@ -6,7 +6,7 @@ use crate::{
     command::Run,
     document::{Document, read},
 };
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use camino::Utf8PathBuf as PathBuf;
 use clap::Args;
 
@@ -24,18 +24,13 @@ impl Run for Cycles {
 
         for entry in entries.flatten() {
             if entry.path().is_file() {
-                let path = entry.path();
-                let path = PathBuf::from_path_buf(path).map_err(|path_buf| {
-                    anyhow!(
-                        "path {} is not UTF-8",
-                        path_buf.to_string_lossy().into_owned()
-                    )
-                })?;
+                let maybe_app: Option<Document<Application>> = PathBuf::try_from(entry.path())
+                    .ok()
+                    .and_then(|path| read(&path).ok());
 
-                let application: Document<Application> =
-                    read(&path).context(format!("failed to read application at {}", path))?;
-
-                if let Some(cycle) = application.record.cycle {
+                if let Some(application) = maybe_app
+                    && let Some(cycle) = application.record.cycle
+                {
                     cycles.insert(cycle);
                 };
             }
