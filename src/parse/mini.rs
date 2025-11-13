@@ -32,8 +32,7 @@ impl Mini {
         let title_re = self
             .title_and_team_regex
             .clone()
-            .unwrap_or(Regex::new(r"^(?P<title>[A-Za-z\s/&()]+?(?:\s+[IVX]+)?)\s*(?:[–,]\s*(?P<team>[^|]+))?(?:\s*\|\s*.*)?$"
-).unwrap());
+            .unwrap_or(Regex::new(r"^(?P<title>[A-Za-z\s/&()]+?(?:\s+[IVX]+)?)\s*(?:[-–—,]\s*(?P<team>[^|]+))?(?:\s*\|\s*.*)?$").unwrap());
 
         if let Some(caps) = title_re.captures(&document_title) {
             let title = caps.name("title").unwrap().as_str().trim().to_string();
