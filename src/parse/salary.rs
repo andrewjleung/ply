@@ -15,7 +15,7 @@ impl ParseSelf<&str> for SalaryRange {
             \$ \s* (?P<lower>\d+(?:,\d{3})?(?:\.\d+)?k?)
             (?: \s* \/ \s* (?P<lower_unit>hr|hour|year))?
             (?:
-            \s* (?:to|-) \s*
+            \s* (?:to|-|—) \s*
             \$ \s* (?P<upper>\d+(?:,\d{3})?(?:\.\d+)?k?)
             (?: \s* \/ \s* (?P<upper_unit>hr|hour|year))?
             )?

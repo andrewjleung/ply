@@ -12,6 +12,7 @@ pub struct Mini {
     pub title_and_team_selector: String,
     pub title_and_team_regex: Option<Regex>,
     pub salary_range_selector: String,
+    pub salary_range_regex: Option<Regex>,
 }
 
 impl Mini {
@@ -31,7 +32,8 @@ impl Mini {
         let title_re = self
             .title_and_team_regex
             .clone()
-            .unwrap_or(Regex::new(r"^(?P<title>[^,]+),\s*(?P<team>[^|]+)\s*\|").unwrap());
+            .unwrap_or(Regex::new(r"^(?P<title>[A-Za-z\s/&()]+?(?:\s+[IVX]+)?)\s*(?:[–,]\s*(?P<team>[^|]+))?(?:\s*\|\s*.*)?$"
+).unwrap());
 
         if let Some(caps) = title_re.captures(&document_title) {
             let title = caps.name("title").unwrap().as_str().trim().to_string();
@@ -42,13 +44,26 @@ impl Mini {
         Err(anyhow!("failed to match title {document_title}"))
     }
 
-    fn parse_salary_range(&self, s: &str) -> Result<Option<SalaryRange>> {
-        Regex::new(&self.salary_range_selector)
-            .unwrap()
-            .captures(s)
-            .and_then(|captures| captures.iter().next().flatten())
-            .and_then(|line| SalaryRange::parse(line.as_str()).transpose())
-            .transpose()
+    fn parse_salary_range(&self, document: &Html) -> Result<Option<SalaryRange>> {
+        let salary_range_selector = Selector::parse(&self.salary_range_selector)
+            .expect("failed to compile salary range selector");
+
+        let salary_range_text = &document
+            .select(&salary_range_selector)
+            .next()
+            .context("failed to select salary range from document")?
+            .text()
+            .collect::<Vec<_>>()
+            .join("");
+
+        if let Some(r) = &self.salary_range_regex {
+            r.captures(salary_range_text)
+                .and_then(|captures| captures.iter().next().flatten())
+                .and_then(|line| SalaryRange::parse(line.as_str()).transpose())
+                .transpose()
+        } else {
+            SalaryRange::parse(salary_range_text)
+        }
     }
 }
 
@@ -59,7 +74,7 @@ impl Parse<&str, Role> for Mini {
             .parse_title_and_team(&document)
             .context("failed to parse title and team")?;
 
-        let salary_range = self.parse_salary_range(s)?;
+        let salary_range = self.parse_salary_range(&document)?;
 
         Ok(Some(Role {
             company: self.company.to_owned(),

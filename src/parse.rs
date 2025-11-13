@@ -5,7 +5,7 @@ use crate::{
     job::SalaryRange,
     parse::{
         ashby::Ashby, google::Google, greenhouse::Greenhouse, hiringcafe::HiringCafe, meta::Meta,
-        netflix::Netflix,
+        mini::Mini, netflix::Netflix,
     },
 };
 
@@ -49,6 +49,7 @@ pub enum Parser {
     HiringCafe,
     Meta,
     Netflix,
+    DataDog,
 
     #[default]
     Unimplemented,
@@ -67,6 +68,7 @@ impl Parser {
             "www.metacareers.com" => Parser::Meta,
             "www.google.com" => Parser::Google,
             "explore.jobs.netflix.net" => Parser::Netflix,
+            "careers.datadoghq.com" => Parser::DataDog,
             _ => Parser::default(),
         })
     }
@@ -79,6 +81,14 @@ impl Parser {
             Parser::HiringCafe => HiringCafe {}.parse(s),
             Parser::Meta => Meta {}.parse(s),
             Parser::Netflix => Netflix {}.parse(s),
+            Parser::DataDog => Mini {
+                company: "DataDog".to_owned(),
+                title_and_team_selector: "head > title".to_owned(),
+                title_and_team_regex: None,
+                salary_range_selector: ".pay-range".to_owned(),
+                salary_range_regex: None,
+            }
+            .parse(s),
             Parser::Unimplemented => Ok(None),
         }
     }
