@@ -1,7 +1,14 @@
 use camino::Utf8Path as Path;
+use camino::Utf8PathBuf as PathBuf;
 use std::{collections::BTreeSet, fs};
 
-use crate::{PlyConfig, application::Application, command::Run, document};
+use crate::document::read;
+use crate::{
+    PlyConfig,
+    application::Application,
+    command::Run,
+    document::{self, Document},
+};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 
@@ -46,18 +53,21 @@ impl Run for Applications {
                 && let Some(path) = Path::from_path(&entry.path())
                 && path.is_file()
             {
-                let doc = document::read::<Application>(path)
-                    .context(format!("failed to read application at {}", path))?;
+                let maybe_doc: Option<Document<Application>> = PathBuf::try_from(entry.path())
+                    .ok()
+                    .and_then(|path| read(&path).ok());
 
-                if self.active && !doc.record.is_active() {
-                    continue;
-                }
+                if let Some(doc) = maybe_doc {
+                    if self.active && !doc.record.is_active() {
+                        continue;
+                    }
 
-                if self.interviewing && !doc.record.is_interviewing() {
-                    continue;
-                }
+                    if self.interviewing && !doc.record.is_interviewing() {
+                        continue;
+                    }
 
-                println!("{}", entry.path().to_string_lossy())
+                    println!("{}", entry.path().to_string_lossy())
+                };
             }
         }
 

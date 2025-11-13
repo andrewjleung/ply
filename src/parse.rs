@@ -62,13 +62,13 @@ impl Parser {
         }
 
         url.domain().map(|domain| match domain {
-            "hiring.cafe" => Parser::HiringCafe,
-            "jobs.ashbyhq.com" => Parser::Ashby,
-            "job-boards.greenhouse.io" => Parser::Greenhouse,
-            "www.metacareers.com" => Parser::Meta,
-            "www.google.com" => Parser::Google,
-            "explore.jobs.netflix.net" => Parser::Netflix,
             "careers.datadoghq.com" => Parser::DataDog,
+            "explore.jobs.netflix.net" => Parser::Netflix,
+            "hiring.cafe" => Parser::HiringCafe,
+            "job-boards.greenhouse.io" => Parser::Greenhouse,
+            "jobs.ashbyhq.com" => Parser::Ashby,
+            "www.google.com" => Parser::Google,
+            "www.metacareers.com" => Parser::Meta,
             _ => Parser::default(),
         })
     }

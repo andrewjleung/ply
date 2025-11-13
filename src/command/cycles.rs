@@ -24,12 +24,12 @@ impl Run for Cycles {
 
         for entry in entries.flatten() {
             if entry.path().is_file() {
-                let maybe_app: Option<Document<Application>> = PathBuf::try_from(entry.path())
+                let maybe_doc: Option<Document<Application>> = PathBuf::try_from(entry.path())
                     .ok()
                     .and_then(|path| read(&path).ok());
 
-                if let Some(application) = maybe_app
-                    && let Some(cycle) = application.record.cycle
+                if let Some(doc) = maybe_doc
+                    && let Some(cycle) = doc.record.cycle
                 {
                     cycles.insert(cycle);
                 };
