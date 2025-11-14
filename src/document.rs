@@ -37,16 +37,14 @@ where
 
     let mut frontmatter = String::new();
     let mut content = String::new();
-    let mut in_frontmatter = false;
+    let mut state = 0;
+
     for line in BufReader::new(file).lines() {
         let line = line.context(format!("failed to read line in document at {}", filename))?;
-        if line == "---" {
-            if in_frontmatter {
-                break;
-            }
 
-            in_frontmatter = !in_frontmatter;
-        } else if in_frontmatter {
+        if line.trim() == "---" {
+            state += 1;
+        } else if state == 1 {
             frontmatter.push_str(&line);
             frontmatter.push('\n');
         } else {

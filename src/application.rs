@@ -32,6 +32,7 @@ pub enum StageType {
     Screen,
     Technical,
     Behavioral,
+    Onsite,
     Negotiation,
     Rejected,
     Accepted,

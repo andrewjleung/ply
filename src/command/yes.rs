@@ -46,6 +46,12 @@ impl Run for Yes {
             .write(&config.data_dir)
             .context("failed to write new stage to document")?;
 
+        println!(
+            "application for '{}' marked as moving forward to the next stage ({})",
+            document.record.pretty_print(),
+            self.next_stage
+        );
+
         Ok(())
     }
 }
