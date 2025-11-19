@@ -3,12 +3,7 @@ use camino::Utf8PathBuf as PathBuf;
 use std::{collections::BTreeSet, fs};
 
 use crate::document::read;
-use crate::{
-    PlyConfig,
-    application::Application,
-    command::Run,
-    document::{self, Document},
-};
+use crate::{PlyConfig, application::Application, command::Run, document::Document};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 
@@ -77,21 +72,24 @@ impl Run for Applications {
 
 impl Run for Companies {
     fn run(&self, config: &PlyConfig) -> Result<()> {
-        let read_dir = fs::read_dir(&config.data_dir).context(format!(
+        let entries = fs::read_dir(&config.data_dir).context(format!(
             "failed to read files in data directory {}",
             &config.data_dir
         ))?;
 
         let mut companies: BTreeSet<String> = BTreeSet::new();
-        for entry in read_dir {
+        for entry in entries {
             if let Ok(entry) = entry
                 && let Some(path) = Path::from_path(&entry.path())
                 && path.is_file()
             {
-                let doc = document::read::<Application>(path)
-                    .context(format!("failed to read application at {}", path))?;
+                let maybe_doc: Option<Document<Application>> = PathBuf::try_from(entry.path())
+                    .ok()
+                    .and_then(|path| read(&path).ok());
 
-                companies.insert(doc.record.job.company);
+                if let Some(doc) = maybe_doc {
+                    companies.insert(doc.record.job.company);
+                };
             }
         }
 
