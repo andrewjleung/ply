@@ -35,7 +35,7 @@ pub struct To {
     pub cycle: Option<String>,
 
     // Print the application to STDOUT instead of writing it
-    #[arg(long, short)]
+    #[arg(long)]
     pub print: bool,
 }
 

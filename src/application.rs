@@ -33,6 +33,7 @@ pub enum StageType {
     Technical,
     Behavioral,
     Onsite,
+    TeamMatching,
     Negotiation,
     Rejected,
     Accepted,

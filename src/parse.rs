@@ -4,11 +4,12 @@ use url::Url;
 use crate::{
     job::SalaryRange,
     parse::{
-        ashby::Ashby, google::Google, greenhouse::Greenhouse, hiringcafe::HiringCafe, meta::Meta,
-        mini::Mini, netflix::Netflix,
+        apple::Apple, ashby::Ashby, google::Google, greenhouse::Greenhouse, hiringcafe::HiringCafe,
+        meta::Meta, mini::Mini, netflix::Netflix,
     },
 };
 
+pub mod apple;
 pub mod ashby;
 pub mod google;
 pub mod greenhouse;
@@ -43,6 +44,7 @@ pub struct Role {
 #[allow(dead_code)]
 #[derive(Default, Clone, clap::ValueEnum)]
 pub enum Parser {
+    Apple,
     Ashby,
     Google,
     Greenhouse,
@@ -69,12 +71,14 @@ impl Parser {
             "jobs.ashbyhq.com" => Parser::Ashby,
             "www.google.com" => Parser::Google,
             "www.metacareers.com" => Parser::Meta,
+            "jobs.apple.com" => Parser::Apple,
             _ => Parser::default(),
         })
     }
 
     pub fn parse_role(&self, s: &str) -> Result<Option<Role>> {
         match self {
+            Parser::Apple => Apple {}.parse(s),
             Parser::Ashby => Ashby {}.parse(s),
             Parser::Google => Google {}.parse(s),
             Parser::Greenhouse => Greenhouse {}.parse(s),
